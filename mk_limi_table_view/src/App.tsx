@@ -588,102 +588,102 @@ const App: React.FC = () => {
                 {/* 流程状态筛选 */}
                 <div style={{ marginBottom: '15px' }}>
                     <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
-                        <div>
-                            优先级：
-                            <Checkbox.Group
-                                options={fd_type.map(opt => ({ label: opt.label, value: opt.value }))}
-                                onChange={(values) => handleFilterChange("DOC_PRIORITY", "in", values as string[])}
-                            />
-
-
-                                <span style={{ marginRight: '8px' }}>标题：</span>
-                                <Input
-                                    placeholder="标题"
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                        handleFilterChange("DOC_NAME", "like", e.target.value)
-                                    }
-                                    style={{ width: '200px' }}
-                                />
-                             <span style={{ marginRight: '8px' }}>单号：</span>
-                                <Input
-                                    placeholder="单号"
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                        handleFilterChange("DOC_NUMBER", "like", e.target.value)
-                                    }
-                                    style={{ width: '200px' }}
-                                />
-
-                                <span style={{ marginRight: '8px' }}>项目号：</span>
-                                <Input
-                                    placeholder="单号"
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                        handleFilterChange("fd_col_8mkygi", "like", e.target.value)
-                                    }
-                                    style={{ width: '200px' }}
-                                />
-
-                            <span style={{ marginRight: '8px' }}>单据状态：</span>
-                                <Checkbox.Group
-                                    options={FD_DOC_STATUS.map(opt => ({ label: opt.label, value: opt.value }))}
-                                    onChange={(values) => handleFilterChange("FD_DOC_STATUS", "in", values as string[])}
-                                />
-                                    
-                                 是否返工：
-                            <Checkbox.Group
-                                options={fd_lable.map(opt => ({ label: opt.label, value: opt.value }))}
-                                onChange={(values) => handleFilterChange("DOC_STATE", "in", values as string[])}
-                            />
-
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div style={{display:'flex', gap: '20px', alignItems: 'center'}}>
+                                <div>
+                                    <span style={{ marginRight: '8px', fontWeight: 'bold' }}>标题：</span>
+                                    <Input
+                                        placeholder="标题"
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                            handleFilterChange("DOC_NAME", "like", e.target.value)
+                                        }
+                                        style={{ width: '200px' }}
+                                    />
+                                </div>
+                                <div>
+                                    <span style={{ marginRight: '8px', fontWeight: 'bold' }}>单号：</span>
+                                    <Input
+                                        placeholder="单号"
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                            handleFilterChange("DOC_NUMBER", "like", e.target.value)
+                                        }
+                                        style={{ width: '200px' }}
+                                    />
+                                </div>
+                                <div>
+                                    <span style={{ marginRight: '8px' , fontWeight: 'bold'}}>项目号：</span>
+                                    <Input
+                                        placeholder="单号"
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                            handleFilterChange("fd_col_8mkygi", "like", e.target.value)
+                                        }
+                                        style={{ width: '200px' }}
+                                    />
+                                </div>
+                            </div>
+                            <div style={{display:'flex', gap: '20px', alignItems: 'center'}}>
+                                <div>
+                                    <span style={{ marginRight: '8px', fontWeight: 'bold' }}>优先级：</span>
+                                    <Checkbox.Group
+                                        options={fd_type.map(opt => ({ label: opt.label, value: opt.value }))}
+                                        onChange={(values) => handleFilterChange("DOC_PRIORITY", "in", values as string[])}
+                                    />
+                                </div>
+                                <div>
+                                    <span style={{ marginRight: '8px', fontWeight: 'bold' }}>单据状态：</span>
+                                    <Checkbox.Group
+                                        options={FD_DOC_STATUS.map(opt => ({ label: opt.label, value: opt.value }))}
+                                        onChange={(values) => handleFilterChange("FD_DOC_STATUS", "in", values as string[])}
+                                    />
+                                </div>
+                                <div>
+                                    <span style={{ marginRight: '8px', fontWeight: 'bold' }}>是否返工：</span>
+                                    <Checkbox.Group
+                                        options={fd_lable.map(opt => ({ label: opt.label, value: opt.value }))}
+                                        onChange={(values) => handleFilterChange("DOC_STATE", "in", values as string[])}
+                                    />
+                                </div>
+                            </div>
+                            <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                                <div>
+                                    <span style={{ marginRight: '8px', fontWeight: 'bold' }}>站点状态：</span>
+                                    <Checkbox.Group
+                                        options={processStatusOptions.filter(item => item.key === fdType).map(opt => ({ label: opt.label, value: opt.value }))}
+                                        value={values}
+                                        onChange={(values) => handleFilterChange("DOC_SITE", "in", values as string[])}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
-                        <div>
-                            站点状态：
-                            <Checkbox.Group
-                                options={processStatusOptions.filter(item => item.key === fdType).map(opt => ({ label: opt.label, value: opt.value }))}
-                                value={values}
-                                onChange={(values) => handleFilterChange("DOC_SITE", "in", values as string[])}
-                            />
-                        </div>
-                    </div>
-
-                    <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
-   
-                        
-                                       
-                        </div>
-                  
+                    <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}></div>
                     {/* 其他隐藏筛选数据 */}
                     {flage && (
                         <div>
-
-                            <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center' }}>
-                                <span style={{ marginRight: '8px' }}>创建时间：</span>
-                                <RangePicker
-
-                                    onChange={(date, dateString) => {
-                                        // dateString 默认是 YYYY-MM-DD 格式
-                                        handleFilterChange("FD_CREATE_TIME", "betweenTime", dateString);
-                                    }}
-
-                                    style={{ width: '200px' }}
-                                />
-
-                                 <span style={{ marginRight: '8px' }}>接样时间：</span>
-
-
-                                <RangePicker
-                                    onChange={(date, dateString) => {
-                                        // dateString 默认是 YYYY-MM-DD 格式
-                                        handleFilterChange("FD_CREATE_TIME", "betweenTime", dateString);
-                                    }}
-                                    style={{ width: '200px' }}
-                                />
+                            <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center',gap: '16px' }}>
+                                <div>
+                                    <span style={{ marginRight: '8px' , fontWeight: 'bold'}}>创建时间：</span>
+                                    <RangePicker
+                                        onChange={(date, dateString) => {
+                                            // dateString 默认是 YYYY-MM-DD 格式
+                                            handleFilterChange("FD_CREATE_TIME", "betweenTime", dateString);
+                                        }}
+                                        style={{ width: '200px' }}
+                                    />
+                                </div>
+                                <div>
+                                    <span style={{ marginRight: '8px', fontWeight: 'bold' }}>接样时间：</span>
+                                    <RangePicker
+                                        onChange={(date, dateString) => {
+                                            // dateString 默认是 YYYY-MM-DD 格式
+                                            handleFilterChange("FD_CREATE_TIME", "betweenTime", dateString);
+                                        }}
+                                        style={{ width: '200px' }}
+                                    />
+                                </div>
                             </div>
-
-
                             <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center' }}>
-                                <span style={{ marginRight: '8px' }}>接样人员：</span>
+                                <span style={{ marginRight: '8px' , fontWeight: 'bold'}}>接样人员：</span>
 
                                 <PersonnelTagsIndex
                                     data={selectedItems}
@@ -712,7 +712,7 @@ const App: React.FC = () => {
                             </div>
     
                             <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center' }}>
-                                <span style={{ marginRight: '8px' }}>委托单位：</span>
+                                <span style={{ marginRight: '8px' , fontWeight: 'bold'}}>委托单位：</span>
                                 <PersonnelTagsIndex
                                     data={selectedItemss}
                                     maxCount={15}
