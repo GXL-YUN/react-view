@@ -1,0 +1,364 @@
+/* AssetCardFilter.css */
+
+/* 主容器 */
+.asset-filter-container {
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  margin-bottom: 24px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  transition: all 0.3s ease;
+}
+
+.asset-filter-container:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* 标题栏 */
+.asset-filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f3f4f6;
+  background-color: #f9fafb;
+}
+
+.asset-filter-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.asset-filter-title-icon {
+  display: inline-block;
+  width: 4px;
+  height: 16px;
+  background-color: #3b82f6;
+  border-radius: 2px;
+}
+
+.asset-filter-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* 内容区 */
+.asset-filter-content {
+  padding: 24px;
+  position: relative;
+}
+
+/* 基础筛选条件 */
+.asset-base-filters {
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  align-items: flex-end;
+}
+
+.asset-filter-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.asset-filter-label {
+  font-size: 14px;
+  color: #374151;
+  margin-right: 8px;
+  min-width: 60px;
+  font-weight: 500;
+}
+
+/* 输入框和选择器样式 */
+.asset-filter-input-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.asset-filter-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.asset-filter-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.asset-filter-input::placeholder {
+  color: #9ca3af;
+}
+
+/* 按钮样式 */
+.asset-filter-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  outline: none;
+  user-select: none;
+}
+
+.asset-filter-button-primary {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.asset-filter-button-primary:hover {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.asset-filter-button-primary:active {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.asset-filter-button-outline {
+  background-color: transparent;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.asset-filter-button-outline:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.asset-filter-button-small {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.asset-filter-button-right {
+  float: right;
+  font-weight: bold;
+}
+
+/* 高级筛选区域 */
+.asset-advanced-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.asset-advanced-filters {
+  margin-bottom: 15px;
+  padding: 20px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  animation: asset-slideDown 0.3s ease-out;
+}
+
+.asset-advanced-row {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+}
+
+/* 人员标签样式 */
+.asset-personnel-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-right: 12px;
+  flex: 1;
+}
+
+.asset-personnel-tag {
+  padding: 4px 8px;
+  background-color: #d1fae5;
+  color: #065f46;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: help;
+  transition: all 0.2s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.asset-personnel-tag:hover {
+  background-color: #a7f3d0;
+}
+
+.asset-personnel-tag-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: inherit;
+  opacity: 0.7;
+  font-size: 16px;
+  line-height: 1;
+  transition: opacity 0.2s ease;
+}
+
+.asset-personnel-tag-remove:hover {
+  opacity: 1;
+}
+
+/* 日期选择器样式 */
+.asset-date-picker {
+  width: 200px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.asset-date-picker input {
+  border: none;
+  outline: none;
+  padding: 8px;
+  font-size: 14px;
+}
+
+/* 复选框组样式 */
+.asset-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-left: 8px;
+}
+
+.asset-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.asset-checkbox-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #3b82f6;
+}
+
+.asset-checkbox-label {
+  font-size: 13px;
+  color: #374151;
+}
+
+/* 无人员选中时的提示 */
+.asset-no-personnel {
+  font-size: 13px;
+  color: #9ca3af;
+  font-style: italic;
+  margin-right: 12px;
+}
+
+/* 展开/收起按钮容器 */
+.asset-toggle-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* 图标样式 */
+.asset-icon {
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+  margin-right: 6px;
+}
+
+/* 动画 */
+@keyframes asset-slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .asset-filter-container {
+    border-radius: 8px;
+    margin-bottom: 16px;
+  }
+  
+  .asset-filter-header {
+    padding: 16px 20px;
+  }
+  
+  .asset-filter-content {
+    padding: 20px;
+  }
+  
+  .asset-base-filters {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .asset-filter-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .asset-filter-label {
+    margin-right: 0;
+  }
+  
+  .asset-filter-input {
+    width: 100%;
+  }
+  
+  .asset-advanced-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .asset-personnel-tags {
+    width: 100%;
+  }
+  
+  .asset-checkbox-group {
+    width: 100%;
+  }
+  
+  .asset-toggle-container {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .asset-filter-button-right {
+    float: none;
+    width: 100%;
+  }
+}

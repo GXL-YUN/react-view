@@ -1,0 +1,94 @@
+/* BaiduStyleSearch.css */
+.baidu-search-container {
+    min-height: 100vh;
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+
+.search-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 100px;
+    margin-bottom: 40px;
+    margin-left: 34%;
+     margin-right: 34%;
+}
+
+.logo {
+    color: #3388ff;
+    margin-bottom: 30px;
+    font-family: Arial, sans-serif;
+}
+
+.search-box {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.search-results {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.result-stats {
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.result-card {
+    padding: 0;
+    margin-bottom: 10px;
+}
+
+.result-title {
+    font-size: 18px;
+    color: #1a0dab;
+
+
+    text-decoration: none;
+    font-weight: normal;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.result-title:hover {
+    text-decoration: underline;
+}
+
+.result-url {
+    color: #006621;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.result-description {
+    color: #545454;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.no-results, .welcome-message {
+    text-align: center;
+    padding: 40px 0;
+}
+
+@media (max-width: 768px) {
+    .search-header {
+        margin-top: 50px;
+    }
+
+    .search-box .ant-space-compact {
+        width: 100% !important;
+    }
+
+    .search-results {
+        margin: 0 10px;
+    }
+}
