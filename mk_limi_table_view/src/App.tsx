@@ -747,7 +747,7 @@ const App: React.FC = () => {
 
                 {/* 其他筛选条件 */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Button style={{ fontWeight: 'bold', float: 'right' }} type='primary' size="small" onClick={changView} >展开筛选条件</Button>
+                    <Button style={{ fontWeight: 'bold', float: 'right' }} type='primary' size="small" onClick={changView} >{flage ? '收缩筛选条件' : '展开筛选条件'}</Button>
                 </div>
             </div>
 
