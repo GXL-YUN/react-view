@@ -45,7 +45,11 @@ const AttendanceReportPage: React.FC = () => {
   const [department, setDepartment] = useState<string>('');
   const [team, setTeam] = useState<string>('');
   const [searchText, setSearchText] = useState<string>('');
-  
+
+
+    //部门下拉列表
+  const [departmentOptions,setDepartmentOptions] = useState()
+  const [teamOptions,setTeamOptions] = useState()
   // 分页
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -119,6 +123,8 @@ const AttendanceReportPage: React.FC = () => {
           );
           if(response.status==200){
             setScheduleData(response.data.data.data);
+            setDepartmentOptions(response.data.data.departmentList)
+            setTeamOptions(response.data.data.teamList)
             setPageSize(response.data.data.size);
             setCurrentPage(response.data.data.current);
             setPageCount(response.data.data.count);
@@ -247,8 +253,8 @@ const AttendanceReportPage: React.FC = () => {
       width: 110,
       align: 'center',
       render: (value: number) => (
-        <span style={{ color: value > 0 ? '#ff4d4f' : '#595959' }}>
-          {value}
+        <span style={{ color: value > 0 ? '#ff4d4f' : '#595959' ,fontWeight: 500}}>
+          {value}h
         </span>
       ),
     },
@@ -283,18 +289,18 @@ const AttendanceReportPage: React.FC = () => {
   }, []);
 
   // 部门选项
-  const departmentOptions = [
-    { value: '', label: '全部' },
-    { value: '部门一', label: '部门一' },
-    { value: '部门二', label: '部门二' },
-  ];
-
-  // 班组选项
-  const teamOptions = [
-    { value: '', label: '全部' },
-    { value: '班组1', label: '班组1' },
-    { value: '班组2', label: '班组2' },
-  ];
+  // const departmentOptions = [
+  //   { value: '', label: '全部' },
+  //   { value: '部门一', label: '部门一' },
+  //   { value: '部门二', label: '部门二' },
+  // ];
+  //
+  // // 班组选项
+  // const teamOptions = [
+  //   { value: '', label: '全部' },
+  //   { value: '班组1', label: '班组1' },
+  //   { value: '班组2', label: '班组2' },
+  // ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -322,20 +328,20 @@ const AttendanceReportPage: React.FC = () => {
             <span style={{ color: '#fff', background: '#1890ff', padding: '2px 8px', borderRadius: 4 }}>
               部门
             </span>
-            {/* <Select
+            { <Select
               value={department}
               onChange={setDepartment}
               options={departmentOptions}
               style={{ width: 120 }}
               placeholder="请选择"
-            /> */}
-                        <Input
+            /> }
+          {/*<Input
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
               placeholder="请输入"
-              style={{ width: 140 }}
+              style={{width: 140}}
               allowClear
-            />
+          />*/}
           </Space>
           <Space size={4}>
             <span style={{ color: '#fff', background: '#1890ff', padding: '2px 8px', borderRadius: 4 }}>
@@ -361,13 +367,22 @@ const AttendanceReportPage: React.FC = () => {
             <span style={{ color: '#fff', background: '#1890ff', padding: '2px 8px', borderRadius: 4 }}>
               班组
             </span>
-            <Input
+              {/*<Input
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               placeholder="请输入"
               style={{ width: 140 }}
               allowClear
-            />
+            />*/}
+              {
+                  <Select
+                      value={searchText}
+                      onChange={setSearchText}
+                      options={teamOptions}
+                      style={{ width: 100 }}
+                      placeholder="请选择"
+                  />
+              }
           </Space>
           <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
             查询

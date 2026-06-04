@@ -70,6 +70,10 @@ const SchedulingPage: React.FC = () => {
   const [pageCount, setPageCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
+
+  //部门下拉列表
+  const [departmentOptions,setDepartmentOptions] = useState()
+  const [teamOptions,setTeamOptions] = useState()
   /**
    * 根据接口获取数据
    */
@@ -85,11 +89,11 @@ useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       try{
-          debugger
           //2. 请求接口
           //封装筛选参数
           const pageCountm=[]
           if(team!=""){
+              //姓名
             const date= {
                 "key":"EMPLOYEE_NAME",
                 "type":"like",
@@ -98,7 +102,7 @@ useEffect(() => {
             pageCountm.push(date)
           }
           if(department!=""){
-
+              //部门代码
               const date= {
                 "key":"DEPARTMENT_CODE",
                 "type":"like",
@@ -108,7 +112,7 @@ useEffect(() => {
 
           }
           if(searchText!=""){
-
+            //班组代码
               const date= {
                 "key":"FD_COL_RHLUFZ",
                 "type":"like",
@@ -127,7 +131,10 @@ useEffect(() => {
             }
           );
           if(response.status==200){
+
             setScheduleData(response.data.data.data);
+            setDepartmentOptions(response.data.data.departmentList)
+            setTeamOptions(response.data.data.teamList)
             setPageSize(response.data.data.size);
             setCurrentPage(currentPage);
             setPageCount(response.data.data.count);
@@ -169,62 +176,129 @@ useEffect(() => {
   // }, [filteredData, currentPage, pageSize]);
 
   // 获取当月所有日期列
-  const dateColumns = useMemo(() => {
-    const daysInMonth = selectedMonth.daysInMonth();
-    const columns = [];
-    for (let i = 1; i <= daysInMonth; i++) {
-      const date = selectedMonth.date(i);
-      columns.push({
-        title: (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 12 }}>{date.format('MM/DD')}</div>
-            <div style={{ fontSize: 10, color: '#8c8c8c' }}>{date.format('ddd')}</div>
-          </div>
-        ),
-        dataIndex: `date_${i}`,
-        key: `date_${i}`,
-        width: 60,
-        align: 'center' as const,
-        render: (_: unknown, record: EmployeeSchedule) => {
-          const schedule = record.schedules[i - 1];
-          if (!schedule || !schedule.schedule) {
-            return <span style={{ color: '#d9d9d9' }}>-</span>;
-          }
-          const color = getScheduleColor(schedule.schedule.type);
-          const tooltipContent = (
-            <div>
-              <div>工号: {record.employeeId} 姓名: {record.name}</div>
-              <div>部门: {record.department} 班组: {record.team}</div>
-              {schedule.detail && <div>{schedule.detail}</div>}
-            </div>
-          );
-          return (
-            <Tooltip title={tooltipContent} placement="top">
-              <div
-                style={{
-                  background: color,
-                  color: 'white',
-                  padding: '2px 4px',
-                  borderRadius: 4,
-                  fontSize: 11,
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {schedule.schedule.label}
-              </div>
-            </Tooltip>
-          );
-        },
-      });
-    }
-  debugger
-    console.log("获取到当前列表展示的数据"+columns)
-    return columns;
-  }, [selectedMonth]);
+  // const dateColumns = useMemo(() => {
+  //   const daysInMonth = selectedMonth.daysInMonth();
+  //   const columns = [];
+  //   for (let i = 1; i <= daysInMonth; i++) {
+  //     const date = selectedMonth.date(i);
+  //     columns.push({
+  //       title: (
+  //         <div style={{ textAlign: 'center' }}>
+  //           <div style={{ fontSize: 12 }}>{date.format('MM/DD')}</div>
+  //           <div style={{ fontSize: 10, color: '#8c8c8c' }}>{date.format('ddd')}</div>
+  //         </div>
+  //       ),
+  //       dataIndex: `date_${i}`,
+  //       key: `date_${i}`,
+  //       width: 60,
+  //       align: 'center' as const,
+  //       render: (_: unknown, record: EmployeeSchedule) => {
+  //         const schedule = record.schedules[i - 1];
+  //         if (!schedule || !schedule.schedule) {
+  //           return <span style={{ color: '#d9d9d9' }}>-</span>;
+  //         }
+  //         const color = getScheduleColor(schedule.schedule.type);
+  //         const tooltipContent = (
+  //           <div>
+  //             <div>工号: {record.employeeId} 姓名: {record.name}</div>
+  //             <div>部门: {record.department} 班组: {record.team}</div>
+  //             {schedule.detail && <div>{schedule.detail}</div>}
+  //           </div>
+  //         );
+  //           console.log(schedule)
+  //         return (
+  //           <Tooltip title={tooltipContent} placement="top">
+  //             <div
+  //               style={{
+  //                 background: color,
+  //                 color: 'white',
+  //                 padding: '2px 4px',
+  //                 borderRadius: 4,
+  //                 fontSize: 11,
+  //                 cursor: 'pointer',
+  //                 textAlign: 'center',
+  //                 whiteSpace: 'nowrap',
+  //                 overflow: 'hidden',
+  //                 textOverflow: 'ellipsis',
+  //               }}
+  //             >
+  //               {schedule.schedule.label}
+  //             </div>
+  //           </Tooltip>
+  //         );
+  //       },
+  //     });
+  //   }
+  //   console.log("获取到当前列表展示的数据"+columns)
+  //   return columns;
+  // }, [selectedMonth]);
+
+
+    // 获取当月所有日期列
+    const dateColumns = useMemo(() => {
+        const daysInMonth = selectedMonth.daysInMonth();
+        const columns = [];
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            const currentDate = selectedMonth.date(i);
+            const dateKey = currentDate.format('MM/DD'); // 格式如 "05/07"
+
+            columns.push({
+                title: (
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 12 }}>{currentDate.format('MM/DD')}</div>
+                        <div style={{ fontSize: 10, color: '#8c8c8c' }}>{currentDate.format('ddd')}</div>
+                    </div>
+                ),
+                key: `date_${i}`,
+                width: 60,
+                align: 'center' as const,
+                render: (_: unknown, record: EmployeeSchedule) => {
+                    // 根据日期查找对应的 schedule
+                    const schedule = record.schedules?.find(s => s?.date === dateKey);
+
+                    // 关键判断：检查 detail 是否存在且不为空
+                    const hasValidSchedule = schedule?.detail && schedule.detail.trim() !== '';
+
+                    if (!hasValidSchedule) {
+                        return <span style={{ color: '#d9d9d9' }}>-</span>;
+                    }
+
+                    const color = getScheduleColor(schedule.schedule?.type);
+                    const tooltipContent = (
+                        <div>
+                            <div>工号: {record.employeeId} 姓名: {record.name}</div>
+                            <div>部门: {record.department} 班组: {record.team}</div>
+                            {schedule.detail && <div>{schedule.detail}</div>}
+                        </div>
+                    );
+
+                    return (
+                        <Tooltip title={tooltipContent} placement="top">
+                            <div
+                                style={{
+                                    background: color,
+                                    color: 'white',
+                                    padding: '2px 4px',
+                                    borderRadius: 4,
+                                    fontSize: 11,
+                                    cursor: 'pointer',
+                                    textAlign: 'center',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                }}
+                            >
+                                {schedule.schedule?.label || '排班'}
+                            </div>
+                        </Tooltip>
+                    );
+                },
+            });
+        }
+
+        return columns;
+    }, [selectedMonth]);
 
   // 表格列定义
   const columns: TableColumnsType<EmployeeSchedule> = useMemo(() => [
@@ -308,19 +382,6 @@ useEffect(() => {
     message.success('保存成功');
   }, []);
 
-  // 部门选项
-  const departmentOptions = [
-    { value: '', label: '全部' },
-    { value: '部门一', label: '部门一' },
-    { value: '部门二', label: '部门二' },
-  ];
-
-  // 班组选项
-  const teamOptions = [
-    { value: '', label: '全部' },
-    { value: '班组1', label: '班组1' },
-    { value: '班组2', label: '班组2' },
-  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -348,20 +409,20 @@ useEffect(() => {
             <span style={{ color: '#fff', background: '#1890ff', padding: '2px 8px', borderRadius: 4 }}>
               部门
             </span>
-            {/* <Select
+            <Select
               value={department}
               onChange={setDepartment}
               options={departmentOptions}
               style={{ width: 120 }}
               placeholder="请选择"
-            /> */}
-                        <Input
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              placeholder="请输入"
-              style={{ width: 140 }}
-              allowClear
             />
+            {/*{<Input*/}
+            {/*    value={department}*/}
+            {/*    onChange={(e) => setDepartment(e.target.value)}*/}
+            {/*    placeholder="请输入"*/}
+            {/*    style={{width: 140}}*/}
+            {/*    allowClear*/}
+            {/*/>}*/}
           </Space>
           <Space size={4}>
             <span style={{ color: '#fff', background: '#1890ff', padding: '2px 8px', borderRadius: 4 }}>
@@ -387,13 +448,24 @@ useEffect(() => {
             <span style={{ color: '#fff', background: '#1890ff', padding: '2px 8px', borderRadius: 4 }}>
               班组
             </span>
-            <Input
+              {
+                  // <Input
+                  //     value={searchText}
+                  //     onChange={(e) => setSearchText(e.target.value)}
+                  //     placeholder="请输入"
+                  //     style={{ width: 140 }}
+                  //     allowClear
+                  // />
+              }
+              {
+                  <Select
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              placeholder="请输入"
-              style={{ width: 140 }}
-              allowClear
+              onChange={setSearchText}
+              options={teamOptions}
+              style={{ width: 100 }}
+              placeholder="请选择"
             />
+              }
           </Space>
           <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
             查询

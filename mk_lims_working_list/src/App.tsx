@@ -26,7 +26,7 @@ const App: React.FC = () => {
       <SchedulingPage></SchedulingPage>
 
       {/* 统计表 */}
-      {/* <AttendanceReportPage></AttendanceReportPage> */}
+      {/*{<AttendanceReportPage></AttendanceReportPage>}*/}
     </div>
 
 
