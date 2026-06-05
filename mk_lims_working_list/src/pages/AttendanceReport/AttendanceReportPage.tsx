@@ -384,9 +384,9 @@ const AttendanceReportPage: React.FC = () => {
                   />
               }
           </Space>
-          <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
-            查询
-          </Button>
+          {/*<Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>*/}
+          {/*  查询*/}
+          {/*</Button>*/}
           <Button icon={<ReloadOutlined />} onClick={handleReset}>
             重置
           </Button>
@@ -413,7 +413,15 @@ const AttendanceReportPage: React.FC = () => {
       {/* 表格区 */}
       <Card
         size="small"
-        style={{ borderRadius: 8, flex: 1 }}
+        style={{
+            borderRadius: 8,
+            position: 'sticky',
+            top: 0,
+            zIndex: 100,
+            backgroundColor: '#fff',
+            margin: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        }}
         styles={{ body: { padding: 0 } }}
       >
         <Table
@@ -424,13 +432,21 @@ const AttendanceReportPage: React.FC = () => {
           size="small"
           bordered
           loading={loading}
+          sticky={{ offsetHeader: 80 }}
+          scroll={{ x: 'max-content', y: 'calc(100vh - 200px)'  }}
         />
       </Card>
 
       {/* 分页区 */}
       <Card
         size="small"
-        style={{ borderRadius: 8 }}
+        style={{
+            borderRadius: 8,
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 100,
+            backgroundColor: '#fff'
+        }}
         styles={{ body: { padding: '8px 16px' } }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

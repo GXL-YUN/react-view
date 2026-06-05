@@ -12,10 +12,10 @@ interface LegendProps {
 
 const defaultLegendItems: LegendItem[] = [
   { color: '#52c41a', label: '白班' },
-  { color: '#1890ff', label: '夜班' },
-  { color: '#ff4d4f', label: '全天假' },
-  { color: '#fa8c16', label: '半天假' },
   { color: '#ff18be', label: '中班' },
+  { color: '#1890ff', label: '夜班' },
+  { color: '#fa8c16', label: '半天假' },
+  { color: '#ff4d4f', label: '全天假' },
 ];
 
 const Legend: React.FC<LegendProps> = ({ items = defaultLegendItems }) => {

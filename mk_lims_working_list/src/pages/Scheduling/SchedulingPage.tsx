@@ -43,7 +43,7 @@ const getScheduleColor = (type?: ScheduleType): string => {
     case 'fullDayOff':
       return '#ff4d4f'; // 红色 - 全天假
     case 'halfDayOff':
-      return '#fa8c16'; // 橙色 -休息
+      return '#fa8c16'; // 橙色 -半天假
     default:
       return 'transparent';
   }
@@ -388,7 +388,15 @@ useEffect(() => {
       {/* 筛选区 */}
       <Card
         size="small"
-        style={{ borderRadius: 8 }}
+        style={{
+            borderRadius: 8,
+            position: 'sticky',
+            top: 0,
+            zIndex: 100,
+            backgroundColor: '#fff',
+            margin: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        }}
         styles={{ body: { padding: '16px 16px 8px' } }}
       >
         <Space wrap size={12}>
@@ -467,9 +475,9 @@ useEffect(() => {
             />
               }
           </Space>
-          <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
-            查询
-          </Button>
+          {/*<Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>*/}
+          {/*  查询*/}
+          {/*</Button>*/}
           <Button icon={<ReloadOutlined />} onClick={handleReset}>
             重置
           </Button>
@@ -514,7 +522,8 @@ useEffect(() => {
           dataSource={scheduleData}
           rowKey="id"
           pagination={false}
-          scroll={{ x: 'max-content' }}
+          sticky={{ offsetHeader: 80 }}
+          scroll={{ x: 'max-content', y: 'calc(100vh - 200px)'  }}
           size="small"
           bordered
           loading={loading}
@@ -524,7 +533,13 @@ useEffect(() => {
       {/* 分页区 */}
       <Card
         size="small"
-        style={{ borderRadius: 8 }}
+        style={{
+            borderRadius: 8,
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 100,
+            backgroundColor: '#fff'
+        }}
         styles={{ body: { padding: '8px 16px' } }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
