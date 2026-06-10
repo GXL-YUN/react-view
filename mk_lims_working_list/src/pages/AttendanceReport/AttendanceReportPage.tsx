@@ -19,7 +19,8 @@ import dayjs, { Dayjs } from 'dayjs';
 
 import zhCN from 'antd/es/locale/zh_CN'
 import 'dayjs/locale/zh-cn'
-
+import * as XLSX from 'xlsx';
+// import { saveAs } from 'file-saver';
 
 
 
@@ -284,10 +285,122 @@ const AttendanceReportPage: React.FC = () => {
   }, []);
 
   // 导出
-  const handleExport = useCallback(() => {
-    message.success('导出成功');
-  }, []);
+    const handleExport = useCallback(async () => {
+        // 检查是否有数据
+        if (pageCount === 0) {
+            message.warning('暂无数据可导出');
+            return;
+        }
 
+        setLoading(true);
+        const hideLoading = message.loading('正在导出数据，请稍候...', 0);
+
+        try {
+            // 构建筛选条件（与查询逻辑保持一致）
+            const filters: any[] = [];
+
+            if (team && team.trim() !== '') {
+                filters.push({
+                    key: "EMPLOYEE_NAME",
+                    type: "like",
+                    value: team
+                });
+            }
+
+            if (department && department.trim() !== '') {
+                filters.push({
+                    key: "DEPARTMENT_CODE",
+                    type: "like",
+                    value: department
+                });
+            }
+
+            if (searchText && searchText.trim() !== '') {
+                filters.push({
+                    key: "FD_COL_RHLUFZ",
+                    type: "like",
+                    value: searchText
+                });
+            }
+
+            // 请求全部数据（不传分页参数，或传size为总条数）
+            const response = await axios.post(
+                '/ekp_mkpass/back/mk_limi_table_view/lims/ShiftSchedulingDataComtorller/getAllList',
+                {
+                    size: pageCount,  // 使用总条数获取所有数据
+                    current: 0,       // 从第0条开始
+                    paramStr: selectedMonth,
+                    parem: filters,
+                }
+            );
+
+            if (response.status === 200 && response.data?.data?.data) {
+                const allData = response.data.data.data;
+
+                if (allData.length === 0) {
+                    message.warning('暂无数据可导出');
+                    return;
+                }
+
+                // 准备导出数据（格式化显示）
+                const exportData = allData.map((item: any) => ({
+                    '部门': item.department || '',
+                    '班组': item.team || '',
+                    '工号': item.employeeId || '',
+                    '姓名': item.name || '',
+                    '实际出勤总工时': item.actualWorkHours ? `${item.actualWorkHours}h` : '0h',
+                    '平时加班数(h)': item.weekdayOvertime || 0,
+                    '周末加班数(h)': item.weekendOvertime || 0,
+                    '节假日加班数(h)': item.holidayOvertime || 0,
+                    '请假时间(h)': item.leaveHours ? `${item.leaveHours}h` : '0h',
+                }));
+
+                // 创建工作表
+                const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+                // 设置列宽（提升可读性）
+                worksheet['!cols'] = [
+                    { wch: 15 }, // 部门
+                    { wch: 12 }, // 班组
+                    { wch: 12 }, // 工号
+                    { wch: 10 }, // 姓名
+                    { wch: 18 }, // 实际出勤总工时
+                    { wch: 15 }, // 平时加班数
+                    { wch: 15 }, // 周末加班数
+                    { wch: 18 }, // 节假日加班数
+                    { wch: 15 }, // 请假时间
+                ];
+
+                // 创建工作簿
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(
+                    workbook,
+                    worksheet,
+                    `考勤报表_${selectedMonth.format('YYYY-MM')}`
+                );
+
+                // 导出文件
+                XLSX.writeFile(
+                    workbook,
+                    `考勤报表_${selectedMonth.format('YYYY-MM')}_${Date.now()}.xlsx`
+                );
+
+                hideLoading();
+                message.success(`导出成功，共 ${allData.length} 条数据`);
+            } else {
+                throw new Error('导出数据获取失败');
+            }
+        } catch (error) {
+            console.error('导出失败:', error);
+            hideLoading();
+            message.error('导出失败，请稍后重试');
+        } finally {
+            setLoading(false);
+        }
+    }, [department, team, searchText, selectedMonth, pageCount]);
+  // const handleExport = useCallback(() => {
+  //   message.success('导出成功');
+  // }, []);
   // 部门选项
   // const departmentOptions = [
   //   { value: '', label: '全部' },
