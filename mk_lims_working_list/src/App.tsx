@@ -5,6 +5,7 @@ import zhCN from 'antd/locale/zh_CN';
 import MainLayout from './components/Header/Header';
 import SchedulingPage from './pages/Scheduling/SchedulingPage';
 import AttendanceReportPage from './pages/AttendanceReport/AttendanceReportPage';
+import DailyShiftSchedule from './pages/DailyShiftSchedule/DailyShiftSchedule';
 
 // nginx 子路径部署配置
 const BASENAME = '/ekp_mkpass/mk_limi_table_view';
@@ -23,10 +24,13 @@ const App: React.FC = () => {
 
      <div >
       {/* 排班表 */}
-      {/*<SchedulingPage></SchedulingPage>*/}
+      <SchedulingPage></SchedulingPage>
 
       {/* 统计表 */}
-      {<AttendanceReportPage></AttendanceReportPage>}
+      {/*{<AttendanceReportPage></AttendanceReportPage>}*/}
+
+       {/* 排班表 */}
+       {/*{<DailyShiftSchedule></DailyShiftSchedule>}*/}
     </div>
 
 
