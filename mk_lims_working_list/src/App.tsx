@@ -24,10 +24,10 @@ const App: React.FC = () => {
 
      <div >
       {/* 排班表 */}
-      <SchedulingPage></SchedulingPage>
+      {/*<SchedulingPage></SchedulingPage>*/}
 
       {/* 统计表 */}
-      {/*{<AttendanceReportPage></AttendanceReportPage>}*/}
+      {<AttendanceReportPage></AttendanceReportPage>}
 
        {/* 排班表 */}
        {/*{<DailyShiftSchedule></DailyShiftSchedule>}*/}
