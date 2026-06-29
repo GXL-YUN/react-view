@@ -70,6 +70,7 @@ const AttendanceReportPage: React.FC = () => {
         matchedDeptValue: string | null;
         userName: string;
         isInitialized: boolean;
+        isManager: boolean; // 是否为管理者（部长或班组长）
     }>({
         userInfo: null,
         departmentList: [],
@@ -77,6 +78,7 @@ const AttendanceReportPage: React.FC = () => {
         matchedDeptValue: null,
         userName: '',
         isInitialized: false,
+        isManager: false,
     });
 
     // ===== 防抖 =====
@@ -155,7 +157,7 @@ const AttendanceReportPage: React.FC = () => {
     // ===== 获取用户信息 =====
     const fetchUserInfo = useCallback(async (): Promise<any> => {
         try {
-            console.log('📡 [步骤1/3] 开始获取用户信息...');
+            console.log('📡 [步骤1/4] 开始获取用户信息...');
             const response = await axios.post(
                 '/data/sys-auth/curUser',
                 {},
@@ -170,11 +172,11 @@ const AttendanceReportPage: React.FC = () => {
             if (userData) {
                 setUserInfo(userData);
                 baseDataRef.current.userInfo = userData;
-                console.log('✅ [步骤1/3] 用户信息获取成功:', userData);
+                console.log('✅ [步骤1/4] 用户信息获取成功:', userData);
             }
             return userData;
         } catch (error) {
-            console.error('❌ [步骤1/3] 获取用户信息失败:', error);
+            console.error('❌ [步骤1/4] 获取用户信息失败:', error);
             throw error;
         }
     }, []);
@@ -182,7 +184,7 @@ const AttendanceReportPage: React.FC = () => {
     // ===== 获取部门列表 =====
     const fetchDepartmentList = useCallback(async (): Promise<Array<{ label: string; value: string }>> => {
         try {
-            console.log('📡 [步骤2/3] 开始获取部门列表...');
+            console.log('📡 [步骤2/4] 开始获取部门列表...');
             const response = await axios.post(
                 '/ekp_mkpass/back/mk_limi_table_view/lims/ShiftSchedulingDataComtorller/getDepartmentList',
                 {},
@@ -197,15 +199,15 @@ const AttendanceReportPage: React.FC = () => {
             if (Array.isArray(deptList) && deptList.length > 0) {
                 setDepartmentOptions(deptList);
                 baseDataRef.current.departmentList = deptList;
-                console.log('✅ [步骤2/3] 部门列表获取成功，共', deptList.length, '条');
+                console.log('✅ [步骤2/4] 部门列表获取成功，共', deptList.length, '条');
             } else {
-                console.warn('⚠️ [步骤2/3] 部门列表为空或格式不正确');
+                console.warn('⚠️ [步骤2/4] 部门列表为空或格式不正确');
                 setDepartmentOptions([]);
                 baseDataRef.current.departmentList = [];
             }
             return deptList;
         } catch (error) {
-            console.error('❌ [步骤2/3] 获取部门列表失败:', error);
+            console.error('❌ [步骤2/4] 获取部门列表失败:', error);
             setDepartmentOptions([]);
             baseDataRef.current.departmentList = [];
             throw error;
@@ -215,7 +217,7 @@ const AttendanceReportPage: React.FC = () => {
     // ===== 获取班组列表 =====
     const fetchTeamList = useCallback(async (): Promise<Array<{ label: string; value: string }>> => {
         try {
-            console.log('📡 [步骤3/3] 开始获取班组列表...');
+            console.log('📡 [步骤3/4] 开始获取班组列表...');
             const response = await axios.post(
                 '/ekp_mkpass/back/mk_limi_table_view/lims/ShiftSchedulingDataComtorller/getTeamList',
                 {},
@@ -230,18 +232,58 @@ const AttendanceReportPage: React.FC = () => {
             if (Array.isArray(teamList) && teamList.length > 0) {
                 setTeamOptions(teamList);
                 baseDataRef.current.teamList = teamList;
-                console.log('✅ [步骤3/3] 班组列表获取成功，共', teamList.length, '条');
+                console.log('✅ [步骤3/4] 班组列表获取成功，共', teamList.length, '条');
             } else {
-                console.warn('⚠️ [步骤3/3] 班组列表为空或格式不正确');
+                console.warn('⚠️ [步骤3/4] 班组列表为空或格式不正确');
                 setTeamOptions([]);
                 baseDataRef.current.teamList = [];
             }
             return teamList;
         } catch (error) {
-            console.error('❌ [步骤3/3] 获取班组列表失败:', error);
+            console.error('❌ [步骤3/4] 获取班组列表失败:', error);
             setTeamOptions([]);
             baseDataRef.current.teamList = [];
             throw error;
+        }
+    }, []);
+
+    // ===== 🆕 获取当前用户的排班信息（用于判断职位） =====
+    const fetchCurrentUserSchedule = useCallback(async (
+        userName: string,
+        deptValue: string
+    ): Promise<any | null> => {
+        try {
+            console.log('📡 [步骤4/4] 获取当前用户排班信息，用于判断职位...');
+
+            const response = await axios.post(
+                '/ekp_mkpass/back/mk_limi_table_view/lims/ShiftSchedulingDataComtorller/getAllList',
+                {
+                    size: 1,
+                    current: 0,
+                    paramStr: {
+                        startMonth: dayjs().format('YYYYMM'),
+                        endMonth: dayjs().format('YYYYMM'),
+                    },
+                    parem: [
+                        { key: 'EMPLOYEE_NAME', type: 'like', value: userName },
+                        { key: 'DEPARTMENT_CODE', type: 'like', value: deptValue },
+                    ],
+                },
+                {
+                    headers: { 'Content-Type': 'application/json' },
+                }
+            );
+
+            const data = response.data?.data?.data || [];
+            if (data.length > 0) {
+                console.log('✅ [步骤4/4] 获取到用户排班信息:', data[0]);
+                return data[0];
+            }
+            console.warn('⚠️ [步骤4/4] 未找到用户排班信息');
+            return null;
+        } catch (error) {
+            console.error('❌ [步骤4/4] 获取用户排班信息失败:', error);
+            return null;
         }
     }, []);
 
@@ -418,15 +460,38 @@ const AttendanceReportPage: React.FC = () => {
                 matchedDeptValue = matchUserDepartment(userData.deptName, deptList);
 
                 if (matchedDeptValue) {
-                    // ✅ 匹配成功：限制部门，填入姓名
+                    // ✅ 匹配成功：限制部门
                     baseDataRef.current.matchedDeptValue = matchedDeptValue;
                     setDepartment(matchedDeptValue);
                     setIsDepartmentRestricted(true);
-                    shouldSetEmployeeName = true;
                     console.log(`✅ 自动设置部门筛选: ${userData.deptName} -> ${matchedDeptValue}`);
 
                     const filteredDeptList = deptList.filter(dept => dept.value === matchedDeptValue);
                     setDepartmentOptions(filteredDeptList);
+
+                    // ============================================
+                    // 🆕 步骤5: 查询当前用户的排班信息，判断是否为管理者（部长或班组长）
+                    // ============================================
+                    let isManager = false;
+                    if (userName && matchedDeptValue) {
+                        const userSchedule = await fetchCurrentUserSchedule(userName, matchedDeptValue);
+                        if (userSchedule) {
+                            const position = userSchedule.position || '';
+                            // 判断是否为部长或班组长
+                            isManager = position === '部长' || position === '班组长' ||
+                                position.includes('部长') || position.includes('班组长');
+                            console.log(`👔 用户职位: ${position}, 是否为管理者(部长/班组长): ${isManager}`);
+                            baseDataRef.current.isManager = isManager;
+                        }
+                    }
+
+                    // 🆕 只有非管理者才自动填入姓名
+                    if (!isManager) {
+                        shouldSetEmployeeName = true;
+                        console.log('✅ 普通员工，自动填入姓名筛选');
+                    } else {
+                        console.log('👔 管理者(部长/班组长)身份，不自动填入姓名筛选，可查看部门所有人');
+                    }
                 } else {
                     // ❌ 匹配失败：不限制部门，不填入姓名
                     console.warn(`⚠️ 未匹配到部门: ${userData.deptName}，将查询所有数据`);
@@ -443,7 +508,7 @@ const AttendanceReportPage: React.FC = () => {
                 shouldSetEmployeeName = false;
             }
 
-            // 只有匹配成功时才填入姓名
+            // 只有匹配成功且非管理者时才填入姓名
             if (shouldSetEmployeeName && userName) {
                 setEmployeeName(userName);
                 console.log(`✅ 自动填入姓名筛选: ${userName}`);
@@ -460,13 +525,13 @@ const AttendanceReportPage: React.FC = () => {
                 teamList: teamList || [],
             };
 
-            // 步骤5: 标记基础数据已就绪
+            // 步骤6: 标记基础数据已就绪
             setIsBaseDataReady(true);
             setIsInitializing(false);
             baseDataRef.current.isInitialized = true;
             console.log('✅ 基础数据全部加载完成！');
 
-            // 步骤6: 等待状态更新完成，然后获取数据
+            // 步骤7: 等待状态更新完成，然后获取数据
             await new Promise(resolve => setTimeout(resolve, 100));
 
             const initialParams = {
@@ -478,7 +543,10 @@ const AttendanceReportPage: React.FC = () => {
                 pageSize: DEFAULT_PAGE_SIZE,
             };
 
-            console.log('📡 初始化查询参数:', initialParams);
+            console.log('📡 初始化查询参数:', {
+                ...initialParams,
+                isManager: baseDataRef.current.isManager,
+            });
             await fetchScheduleData(initialParams);
 
             console.log('🎉 所有数据初始化完成！');
@@ -505,7 +573,7 @@ const AttendanceReportPage: React.FC = () => {
                 }
             }
         }
-    }, [fetchUserInfo, fetchDepartmentList, fetchTeamList, fetchScheduleData, getUserDisplayName, matchUserDepartment, monthRange]);
+    }, [fetchUserInfo, fetchDepartmentList, fetchTeamList, fetchScheduleData, getUserDisplayName, matchUserDepartment, monthRange, fetchCurrentUserSchedule]);
 
     // ===== 处理月份变化 =====
     const handleMonthRangeChange = useCallback((dates: [Dayjs, Dayjs] | null) => {
@@ -528,10 +596,12 @@ const AttendanceReportPage: React.FC = () => {
 
         const userDeptValue = baseDataRef.current.matchedDeptValue;
         const userName = baseDataRef.current.userName;
+        const isManager = baseDataRef.current.isManager;
 
         if (userDeptValue) {
             setDepartment(userDeptValue);
-            setEmployeeName(userName || '');
+            // 管理者不自动填入姓名
+            setEmployeeName(isManager ? '' : (userName || ''));
         } else {
             setDepartment('');
             setEmployeeName('');

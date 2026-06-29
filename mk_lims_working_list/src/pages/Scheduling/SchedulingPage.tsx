@@ -192,6 +192,7 @@ const SchedulingPage: React.FC = () => {
         matchedDeptValue: string | null;
         userName: string;
         isInitialized: boolean;
+        isManager: boolean; // 是否为管理者（部长或班组长）
     }>({
         userInfo: null,
         departmentList: [],
@@ -199,6 +200,7 @@ const SchedulingPage: React.FC = () => {
         matchedDeptValue: null,
         userName: '',
         isInitialized: false,
+        isManager: false,
     });
 
     // ===== 防抖 =====
@@ -211,7 +213,7 @@ const SchedulingPage: React.FC = () => {
     // ============================================================
     const fetchUserInfo = useCallback(async (): Promise<any> => {
         try {
-            console.log('📡 [步骤1/3] 开始获取用户信息...');
+            console.log('📡 [步骤1/4] 开始获取用户信息...');
             const response = await axios.post<UserInfoResponse>(
                 '/data/sys-auth/curUser',
                 {},
@@ -226,11 +228,11 @@ const SchedulingPage: React.FC = () => {
             if (userData) {
                 setUserInfo(userData);
                 baseDataRef.current.userInfo = userData;
-                console.log('✅ [步骤1/3] 用户信息获取成功:', userData);
+                console.log('✅ [步骤1/4] 用户信息获取成功:', userData);
             }
             return userData;
         } catch (error) {
-            console.error('❌ [步骤1/3] 获取用户信息失败:', error);
+            console.error('❌ [步骤1/4] 获取用户信息失败:', error);
             throw error;
         }
     }, []);
@@ -240,7 +242,7 @@ const SchedulingPage: React.FC = () => {
     // ============================================================
     const fetchDepartmentList = useCallback(async (): Promise<Array<{ label: string; value: string }>> => {
         try {
-            console.log('📡 [步骤2/3] 开始获取部门列表...');
+            console.log('📡 [步骤2/4] 开始获取部门列表...');
             const response = await axios.post<DepartmentListResponse>(
                 '/ekp_mkpass/back/mk_limi_table_view/lims/ShiftSchedulingDataComtorller/getDepartmentList',
                 {},
@@ -255,15 +257,15 @@ const SchedulingPage: React.FC = () => {
             if (Array.isArray(deptList) && deptList.length > 0) {
                 setDepartmentOptions(deptList);
                 baseDataRef.current.departmentList = deptList;
-                console.log('✅ [步骤2/3] 部门列表获取成功，共', deptList.length, '条');
+                console.log('✅ [步骤2/4] 部门列表获取成功，共', deptList.length, '条');
             } else {
-                console.warn('⚠️ [步骤2/3] 部门列表为空或格式不正确');
+                console.warn('⚠️ [步骤2/4] 部门列表为空或格式不正确');
                 setDepartmentOptions([]);
                 baseDataRef.current.departmentList = [];
             }
             return deptList;
         } catch (error) {
-            console.error('❌ [步骤2/3] 获取部门列表失败:', error);
+            console.error('❌ [步骤2/4] 获取部门列表失败:', error);
             setDepartmentOptions([]);
             baseDataRef.current.departmentList = [];
             throw error;
@@ -275,7 +277,7 @@ const SchedulingPage: React.FC = () => {
     // ============================================================
     const fetchTeamList = useCallback(async (): Promise<Array<{ label: string; value: string }>> => {
         try {
-            console.log('📡 [步骤3/3] 开始获取班组列表...');
+            console.log('📡 [步骤3/4] 开始获取班组列表...');
             const response = await axios.post<TeamListResponse>(
                 '/ekp_mkpass/back/mk_limi_table_view/lims/ShiftSchedulingDataComtorller/getTeamList',
                 {},
@@ -290,18 +292,60 @@ const SchedulingPage: React.FC = () => {
             if (Array.isArray(teamList) && teamList.length > 0) {
                 setTeamOptions(teamList);
                 baseDataRef.current.teamList = teamList;
-                console.log('✅ [步骤3/3] 班组列表获取成功，共', teamList.length, '条');
+                console.log('✅ [步骤3/4] 班组列表获取成功，共', teamList.length, '条');
             } else {
-                console.warn('⚠️ [步骤3/3] 班组列表为空或格式不正确');
+                console.warn('⚠️ [步骤3/4] 班组列表为空或格式不正确');
                 setTeamOptions([]);
                 baseDataRef.current.teamList = [];
             }
             return teamList;
         } catch (error) {
-            console.error('❌ [步骤3/3] 获取班组列表失败:', error);
+            console.error('❌ [步骤3/4] 获取班组列表失败:', error);
             setTeamOptions([]);
             baseDataRef.current.teamList = [];
             throw error;
+        }
+    }, []);
+
+    // ============================================================
+    // 🆕 获取当前用户的排班信息（用于判断职位）
+    // ============================================================
+    const fetchCurrentUserSchedule = useCallback(async (
+        userName: string,
+        deptValue: string
+    ): Promise<EmployeeSchedule | null> => {
+        try {
+            console.log('📡 [步骤4/4] 获取当前用户排班信息，用于判断职位...');
+
+            const response = await axios.post<ScheduleResponse>(
+                '/ekp_mkpass/back/mk_limi_table_view/lims/ShiftSchedulingDataComtorller/getAllByYear',
+                {
+                    size: 1,
+                    current: 0,
+                    paramStr: {
+                        startMonth: dayjs().format('YYYYMM'),
+                        endMonth: dayjs().format('YYYYMM'),
+                    },
+                    parem: [
+                        { key: 'EMPLOYEE_NAME', type: 'like', value: userName },
+                        { key: 'DEPARTMENT_CODE', type: 'like', value: deptValue },
+                    ],
+                },
+                {
+                    headers: { 'Content-Type': 'application/json' },
+                }
+            );
+
+            const data = response.data?.data?.data || [];
+            if (data.length > 0) {
+                console.log('✅ [步骤4/4] 获取到用户排班信息:', data[0]);
+                return data[0];
+            }
+            console.warn('⚠️ [步骤4/4] 未找到用户排班信息');
+            return null;
+        } catch (error) {
+            console.error('❌ [步骤4/4] 获取用户排班信息失败:', error);
+            return null;
         }
     }, []);
 
@@ -350,7 +394,7 @@ const SchedulingPage: React.FC = () => {
 
     // ============================================================
     // 获取排班数据（核心方法）
-    // 完整的 fetchScheduleData 函数
+    // ============================================================
     const fetchScheduleData = useCallback(async (params?: QueryParams) => {
         console.log('🚀 fetchScheduleData 被调用，传入参数:', params);
 
@@ -411,7 +455,7 @@ const SchedulingPage: React.FC = () => {
                 console.log('🔍 应用部门筛选:', queryParams.department);
             }
 
-            // 🔥 姓名筛选 - 关键修复
+            // 🔥 姓名筛选
             const trimmedName = queryParams.employeeName?.trim();
             if (trimmedName) {
                 filters.push({ key: 'EMPLOYEE_NAME', type: 'like', value: trimmedName });
@@ -478,6 +522,7 @@ const SchedulingPage: React.FC = () => {
             isQueryingRef.current = false;
         }
     }, [buildQueryParams, hasParamsChanged, isBaseDataReady]);
+
     // ============================================================
     // 获取用户姓名
     // ============================================================
@@ -489,8 +534,8 @@ const SchedulingPage: React.FC = () => {
     }, []);
 
     // ============================================================
-// 初始化所有数据 - 串行执行
-// ============================================================
+    // 初始化所有数据 - 串行执行
+    // ============================================================
     const initializeData = useCallback(async () => {
         // 防止重复初始化
         if (baseDataRef.current.isInitialized) {
@@ -529,10 +574,10 @@ const SchedulingPage: React.FC = () => {
             });
 
             // ============================================
-            // 步骤4: 处理用户部门匹配和姓名设置
+            // 步骤4: 处理用户部门匹配
             // ============================================
             let matchedDeptValue: string | null = null;
-            let shouldSetEmployeeName = false; // 是否自动填入姓名
+            let shouldSetEmployeeName = false;
             const userName = getUserDisplayName(userData);
 
             // 存储到 ref 中供后续使用
@@ -543,28 +588,50 @@ const SchedulingPage: React.FC = () => {
                 matchedDeptValue = matchUserDepartment(userData.deptName, deptList);
 
                 if (matchedDeptValue) {
-                    // ✅ 匹配成功：限制部门，填入姓名
+                    // ✅ 匹配成功：限制部门
                     baseDataRef.current.matchedDeptValue = matchedDeptValue;
                     setDepartment(matchedDeptValue);
                     setIsDepartmentRestricted(true);
-                    shouldSetEmployeeName = true; // 匹配成功才填入姓名
-                    console.log(`✅ 自动设置部门筛选: ${userData.deptName} -> ${matchedDeptValue}`);
 
                     // 限制部门下拉列表只显示该部门
                     const filteredDeptList = deptList.filter(dept => dept.value === matchedDeptValue);
                     setDepartmentOptions(filteredDeptList);
-                    console.log(`✅ 部门下拉列表已限制，仅显示: ${filteredDeptList.map(d => d.label).join(', ')}`);
+                    console.log(`✅ 自动设置部门筛选: ${userData.deptName} -> ${matchedDeptValue}`);
+
+                    // ============================================
+                    // 🆕 步骤5: 查询当前用户的排班信息，判断是否为管理者（部长或班组长）
+                    // ============================================
+                    let isManager = false;
+                    if (userName && matchedDeptValue) {
+                        const userSchedule = await fetchCurrentUserSchedule(userName, matchedDeptValue);
+                        if (userSchedule) {
+                            const position = userSchedule.position || '';
+                            // 判断是否为部长或班组长
+                            isManager = position === '部长' || position === '班组长' ||
+                                position.includes('部长') || position.includes('班组长');
+                            console.log(`👔 用户职位: ${position}, 是否为管理者(部长/班组长): ${isManager}`);
+                            baseDataRef.current.isManager = isManager;
+                        }
+                    }
+
+                    // 🆕 只有非管理者才自动填入姓名
+                    if (!isManager) {
+                        shouldSetEmployeeName = true;
+                        console.log('✅ 普通员工，自动填入姓名筛选');
+                    } else {
+                        console.log('👔 管理者(部长/班组长)身份，不自动填入姓名筛选，可查看部门所有人');
+                    }
                 } else {
-                    // ❌ 匹配失败：不限制部门，不填入姓名，查询所有数据
+                    // ❌ 匹配失败：不限制部门，不填入姓名
                     console.warn(`⚠️ 未匹配到部门: ${userData.deptName}，将查询所有数据`);
                     setIsDepartmentRestricted(false);
-                    setDepartmentOptions(deptList); // 显示所有部门
-                    setDepartment(''); // 清空部门选择
-                    shouldSetEmployeeName = false; // 不填入姓名
+                    setDepartmentOptions(deptList);
+                    setDepartment('');
+                    shouldSetEmployeeName = false;
                     console.log('✅ 部门下拉列表显示所有部门，姓名筛选留空');
                 }
             } else {
-                // 没有部门信息或部门列表为空：不限制，不填入姓名
+                // 没有部门信息或部门列表为空
                 console.log('ℹ️ 无部门信息或部门列表为空，将查询所有数据');
                 setIsDepartmentRestricted(false);
                 setDepartmentOptions(deptList);
@@ -572,12 +639,12 @@ const SchedulingPage: React.FC = () => {
                 shouldSetEmployeeName = false;
             }
 
-            // 🔥 关键：只有匹配成功时才填入姓名
+            // 🔥 只有匹配成功且非管理者时才填入姓名
             if (shouldSetEmployeeName && userName) {
                 setEmployeeName(userName);
                 console.log(`✅ 自动填入姓名筛选: ${userName}`);
             } else {
-                setEmployeeName(''); // 清空姓名
+                setEmployeeName(''); // 管理者或匹配失败时清空姓名
                 console.log('ℹ️ 姓名筛选留空');
             }
 
@@ -590,7 +657,7 @@ const SchedulingPage: React.FC = () => {
             };
 
             // ============================================
-            // 步骤5: 标记基础数据已就绪
+            // 步骤6: 标记基础数据已就绪
             // ============================================
             setIsBaseDataReady(true);
             setIsInitializing(false);
@@ -598,15 +665,15 @@ const SchedulingPage: React.FC = () => {
             console.log('✅ 基础数据全部加载完成！');
 
             // ============================================
-            // 步骤6: 等待状态更新完成，然后获取排班数据
+            // 步骤7: 等待状态更新完成，然后获取排班数据
             // ============================================
             await new Promise(resolve => setTimeout(resolve, 100));
 
             // 🔥 构建初始查询参数
             const initialParams: QueryParams = {
                 monthRange: monthRange,
-                department: matchedDeptValue || '', // 匹配不到则为空
-                employeeName: shouldSetEmployeeName ? (userName || '') : '', // 匹配不到则为空
+                department: matchedDeptValue || '',
+                employeeName: shouldSetEmployeeName ? (userName || '') : '',
                 team: '',
                 page: 1,
                 pageSize: DEFAULT_PAGE_SIZE,
@@ -616,11 +683,10 @@ const SchedulingPage: React.FC = () => {
                 department: initialParams.department || '(全部)',
                 employeeName: initialParams.employeeName || '(全部)',
                 team: initialParams.team || '(全部)',
+                isManager: baseDataRef.current.isManager,
                 monthRange: initialParams.monthRange ?
                     `${initialParams.monthRange[0].format('YYYY-MM')} ~ ${initialParams.monthRange[1].format('YYYY-MM')}` :
                     'null',
-                page: initialParams.page,
-                pageSize: initialParams.pageSize,
             });
 
             // 获取排班数据
@@ -652,7 +718,8 @@ const SchedulingPage: React.FC = () => {
                 }
             }
         }
-    }, [fetchUserInfo, fetchDepartmentList, fetchTeamList, fetchScheduleData, getUserDisplayName, monthRange]);
+    }, [fetchUserInfo, fetchDepartmentList, fetchTeamList, fetchScheduleData, getUserDisplayName, monthRange, fetchCurrentUserSchedule]);
+
     // ============================================================
     // 处理月份区间变化
     // ============================================================
@@ -666,18 +733,20 @@ const SchedulingPage: React.FC = () => {
     }, []);
 
     // ============================================================
-// 重置筛选条件
-// ============================================================
+    // 重置筛选条件
+    // ============================================================
     const handleReset = useCallback(() => {
         console.log('🔄 重置筛选条件');
 
         const userDeptValue = baseDataRef.current.matchedDeptValue;
         const userName = baseDataRef.current.userName;
+        const isManager = baseDataRef.current.isManager;
 
         // 只有匹配成功时才恢复部门和姓名，否则清空
         if (userDeptValue) {
             setDepartment(userDeptValue);
-            setEmployeeName(userName || '');
+            // 管理者不自动填入姓名
+            setEmployeeName(isManager ? '' : (userName || ''));
         } else {
             setDepartment('');
             setEmployeeName('');
@@ -694,6 +763,7 @@ const SchedulingPage: React.FC = () => {
 
         message.info('已重置');
     }, [buildQueryParams, fetchScheduleData]);
+
     // ============================================================
     // 处理分页变化
     // ============================================================
