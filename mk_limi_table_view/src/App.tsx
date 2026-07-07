@@ -41,6 +41,16 @@ interface LimsData {
     FD_COL_ZMOHYP?: string;
     FD_COL_8MKYGI?: string;
     FD_COL_4QGWDA?: string;
+    FD_COL_Y4XOXQ?: string;
+    DOC_PT?: number;
+    FD_CREATE_TIME?: string;
+    DOC_CABINETANDGRID?: string;
+    DOC_NUM?: string;
+    DOC_NEWSITETIME?: string;
+    FD_TEM_COUNT?: number;
+    FD_COL_T9P4F5?: number;
+    FD_TARGET_NAME?: string;
+
 }
 
 interface ApiResponse {
@@ -90,6 +100,8 @@ const App: React.FC = () => {
 
     const [visibles, setVisibles] = useState(false);
     const [selectedItemss, setSelectedItemss] = useState<SelectedItem[]>([]);
+
+    const [isHourMode, setIsHourMode] = useState(true);
 
     const handleConfirms = (selected: SelectedItem[]) => {
         console.log('选择结果:', selected);
@@ -149,41 +161,47 @@ const App: React.FC = () => {
     { label: '已结案', value: '6' ,key:"getVpdAll"},
     { label: '委外中', value: '66' ,key:"getVpdAll"},
 
-    { label: '测试申请', value: '18'  ,key:"getSemAll"},
-    { label: '领导审批', value: '20'  ,key:"getSemAll"},
-    { label: '接样中', value: '0'  ,key:"getSemAll"},
-    { label: '待SOP编制', value: '17'  ,key:"getSemAll"},
-    { label: 'SOP编制', value: '1'  ,key:"getSemAll"},
-    { label: '待topview', value: '12'  ,key:"getSemAll"},
-    { label: 'topview', value: '2'  ,key:"getSemAll"},
-    { label: '待前处理', value: '13'  ,key:"getSemAll"},
-    { label: '前处理', value: '3'  ,key:"getSemAll"},
-    { label: '待FIB', value: '14' ,key:"getSemAll" },
-    { label: 'FIB', value: '4'  ,key:"getSemAll"},
-    { label: '班组长审批', value: '5'  ,key:"getSemAll"},
-    { label: '待TEM拍摄', value: '15'  ,key:"getSemAll"},
-    { label: 'TEM拍摄', value: '6'  ,key:"getSemAll"},
-    { label: '二次质审', value: '7' ,key:"getSemAll" },
-    { label: '结案审批', value: '8' ,key:"getSemAll" },
-    { label: '已结案', value: '9'  ,key:"getSemAll"},
-    { label: '交接审批', value: '16'  ,key:"getSemAll"},
-    { label: '委外中', value: '66'  ,key:"getSemAll"},
+    { label: '接样中', value: '0', key: "getSemAll" },
+    { label: 'SOP编制', value: '1', key: "getSemAll" },
+    { label: '制样', value: '2', key: "getSemAll" },
+    { label: '拍摄', value: '3', key: "getSemAll" },
+    { label: '班组长审批', value: '5', key: "getSemAll" },
+    { label: '二次质审', value: '7', key: "getSemAll" },
+    { label: '结案审批', value: '8', key: "getSemAll" },
+    { label: '已结案', value: '9', key: "getSemAll" },
+    { label: '待制样', value: '10', key: "getSemAll" },
+    { label: '待拍摄', value: '11', key: "getSemAll" },
+    { label: '测试申请', value: '13', key: "getSemAll" },
+    { label: '待SOP编制', value: '17', key: "getSemAll" },
+    { label: '领导审批', value: '20', key: "getSemAll" },
+    { label: '返工等待', value: '25', key: "getSemAll" },
+    { label: '外诉已开单', value: '40', key: "getSemAll" },
+    { label: '委外中', value: '66', key: "getSemAll" },
 
 
-    { label: '测试申请', value: '13',key:"getTemAll" },
-    { label: '领导审批', value: '20',key:"getTemAll" },
-    { label: '接样中', value: '0' ,key:"getTemAll"},
-    { label: '待SOP编制', value: '17',key:"getTemAll" },
-    { label: 'SOP编制', value: '1' ,key:"getTemAll"},
-    { label: '待制样', value: '10',key:"getTemAll" },
-    { label: '制样', value: '2',key:"getTemAll" },
-    { label: '待拍摄', value: '11' ,key:"getTemAll"},
-    { label: '拍摄', value: '3' ,key:"getTemAll"},
-    { label: '班组长审批', value: '5' ,key:"getTemAll"},
-    { label: '二次质审', value: '7' ,key:"getTemAll"},
-    { label: '结案审批', value: '8',key:"getTemAll" },
-    { label: '已结案', value: '9' ,key:"getTemAll"},
-    { label: '委外中', value: '66',key:"getTemAll" }
+    { label: '接样中', value: '0', key: "getTemAll" },
+    { label: 'SOP编制', value: '1', key: "getTemAll" },
+    { label: 'topview', value: '2', key: "getTemAll" },
+    { label: '前处理', value: '3', key: "getTemAll" },
+    { label: 'FIB', value: '4', key: "getTemAll" },
+    { label: '班组长审批', value: '5', key: "getTemAll" },
+    { label: 'TEM拍摄', value: '6', key: "getTemAll" },
+    { label: '二次质审', value: '7', key: "getTemAll" },
+    { label: '结案审批', value: '8', key: "getTemAll" },
+    { label: '已结案', value: '9', key: "getTemAll" },
+    { label: '待制样', value: '10', key: "getTemAll" },
+    { label: '待拍摄', value: '11', key: "getTemAll" },
+    { label: '待topview', value: '12', key: "getTemAll" },
+    { label: '待前处理', value: '13', key: "getTemAll" },
+    { label: '待FIB', value: '14', key: "getTemAll" },
+    { label: '待TEM拍摄', value: '15', key: "getTemAll" },
+    { label: '交接审批', value: '16', key: "getTemAll" },
+    { label: '待SOP编制', value: '17', key: "getTemAll" },
+    { label: '测试申请', value: '18', key: "getTemAll" },
+    { label: '领导审批', value: '20', key: "getTemAll" },
+    { label: '返工等待', value: '25', key: "getTemAll" },
+    { label: '外诉已开单', value: '40', key: "getTemAll" },
+    { label: '委外中', value: '66', key: "getTemAll" }
 
     ]
     type StatusItem = {
@@ -344,46 +362,93 @@ const App: React.FC = () => {
         }
         try {
             // 准备数据
-            const exportData = data.map((item, index) => ({
-                序号: (current - 1) * localPageSize + index + 1,
-                文档名称: item.DOC_NAME || '',
-                单号: item.DOC_NUMBER || '',
-                样品柜位: item.FD_COL_VY6XBM || '',
-                测试柜位: item.FD_COL_6YI0L7 || '',
-                样品数量: item.FD_COL_3MM6EF || 0,
-                测试点数: item.FD_COL_1CBIHH || 0,
-                优先级: item.DOC_PRIORITY || '',
-                是否为返工: item.FD_COL_1MRA3M === '1' ? '是' : item.FD_COL_1MRA3M === '2' ? '否' : '-',
-                当前站点: item.FD_COL_VGKEFG || '',
-                流入当前站点时长: item.FD_COL_ZMOHYP || '',
-                项目群: item.FD_COL_8MKYGI || '',
-                项目号: item.DOC_PROJECT || '',
-                预计结果上传时间: item.FD_COL_4QGWDA || '',
-                时效: item.DOC_AGING || ''
-            }));
+            const exportData = data.map((item, index) => {
+                const baseData = {
+                    序号: (current - 1) * localPageSize + index + 1,
+                    文档名称: item.DOC_NAME || '',
+                    单号: item.DOC_NUMBER || '',
+                    // 接样时间: item.FD_CREATE_TIME || '',
+                    // 样品柜位: item.DOC_CABINETANDGRID || '',
+                    样品数量: item.DOC_NUM || 0,
+                    测试点数: item.DOC_PT || 0,
+                    优先级: item.DOC_PRIORITY || '',
+                    是否为返工: item.DOC_STATE === '1' ? '是' : item.DOC_STATE === '0' ? '否' : '-',
+                    当前站点: item.DOC_SITE || '',
+                    流入当前站点时长: item.DOC_NEWSITETIME || '',
+                    项目号: item.DOC_PROJECT || '',
+                    时效: item.DOC_AGING || ''
+                };
+
+                // 如果是 TEM 流程，添加 FIB 和 TEM 测试点数
+                // if (fdType === 'getTemAll') {
+                //     return {
+                //         ...baseData,
+                //         'FIB测试点数': item.FD_COL_T9P4F5 || 0,
+                //         'TEM测试点数': item.FD_TEM_COUNT || 0
+                //     };
+                // } else {
+                //     // 其他流程显示测试点数
+                //     return {
+                //         ...baseData,
+                //         测试点数: item.DOC_PT || 0
+                //     };
+                // }
+            });
 
             // 创建工作簿
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.json_to_sheet(exportData);
 
             // 设置列宽
-            const wscols = [
+            let wscols =  [
                 { wch: 8 },   // 序号
                 { wch: 30 },  // 文档名称
                 { wch: 20 },  // 单号
+                { wch: 20 },  // 接样时间
                 { wch: 15 },  // 样品柜位
-                { wch: 15 },  // 测试柜位
                 { wch: 10 },  // 样品数量
                 { wch: 10 },  // 测试点数
                 { wch: 10 },  // 优先级
                 { wch: 10 },  // 是否为返工
                 { wch: 15 },  // 当前站点
                 { wch: 20 },  // 流入当前站点时长
-                { wch: 15 },  // 项目群
                 { wch: 15 },  // 项目号
-                { wch: 20 },  // 预计结果上传时间
                 { wch: 15 },  // 时效
             ];
+            // if (fdType === 'getTemAll') {
+            //     wscols = [
+            //         { wch: 8 },   // 序号
+            //         { wch: 30 },  // 文档名称
+            //         { wch: 20 },  // 单号
+            //         { wch: 20 },  // 接样时间
+            //         { wch: 15 },  // 样品柜位
+            //         { wch: 10 },  // 样品数量
+            //         { wch: 12 },  // FIB测试点数
+            //         { wch: 12 },  // TEM测试点数
+            //         { wch: 10 },  // 优先级
+            //         { wch: 10 },  // 是否为返工
+            //         { wch: 15 },  // 当前站点
+            //         { wch: 20 },  // 流入当前站点时长
+            //         { wch: 15 },  // 项目号
+            //         { wch: 15 },  // 时效
+            //     ];
+            // } else {
+            //     wscols = [
+            //         { wch: 8 },   // 序号
+            //         { wch: 30 },  // 文档名称
+            //         { wch: 20 },  // 单号
+            //         { wch: 20 },  // 接样时间
+            //         { wch: 15 },  // 样品柜位
+            //         { wch: 10 },  // 样品数量
+            //         { wch: 10 },  // 测试点数
+            //         { wch: 10 },  // 优先级
+            //         { wch: 10 },  // 是否为返工
+            //         { wch: 15 },  // 当前站点
+            //         { wch: 20 },  // 流入当前站点时长
+            //         { wch: 15 },  // 项目号
+            //         { wch: 15 },  // 时效
+            //     ];
+            // }
             ws['!cols'] = wscols;
 
             // 添加筛选条件信息作为备注
@@ -432,6 +497,11 @@ const App: React.FC = () => {
             key: 'DOC_NAME',
             width: 200,
             ellipsis: true,
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_NAME || '').toString().trim();
+                const strB = (b.DOC_NAME || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
         },
         {
             title: '单号',
@@ -445,14 +515,31 @@ const App: React.FC = () => {
                 return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
             },
         },
-        {
-            title: '样品柜位',
-            dataIndex: 'FD_COL_VY6XBM',
-            key: 'FD_COL_VY6XBM',
-            width: 120,
-            ellipsis: true,
-            render: (text: string) => text || '-',
-        },
+        // {
+        //     title: '接样时间',
+        //     dataIndex: 'FD_CREATE_TIME',
+        //     key: 'FD_CREATE_TIME',
+        //     width: 150,
+        //     ellipsis: true,
+        //     sorter: (a: LimsData, b: LimsData) => {
+        //         const strA = (a.FD_CREATE_TIME || '').toString().trim();
+        //         const strB = (b.FD_CREATE_TIME || '').toString().trim();
+        //         return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+        //     },
+        // },
+        // {
+        //     title: '样品柜位',
+        //     dataIndex: 'DOC_CABINETANDGRID',
+        //     key: 'DOC_CABINETANDGRID',
+        //     width: 120,
+        //     ellipsis: true,
+        //     sorter: (a: LimsData, b: LimsData) => {
+        //         const strA = (a.DOC_CABINETANDGRID || '').toString().trim();
+        //         const strB = (b.DOC_CABINETANDGRID || '').toString().trim();
+        //         return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+        //     },
+        //     render: (text: string) => text || '-',
+        // },
         // {
         //     title: '测试柜位',
         //     dataIndex: 'FD_COL_6YI0L7',
@@ -467,16 +554,71 @@ const App: React.FC = () => {
             key: 'DOC_NUM',
             width: 100,
             align: 'center' as const,
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_NUM || '').toString().trim();
+                const strB = (b.DOC_NUM || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
             render: (text: number) => text || '0',
         },
+        // 在 columns 定义中，替换原来的测试点数列
+        // ...(fdType === 'getTemAll' ? [
+        //     {
+        //         title: 'FIB测试点数',
+        //         dataIndex: 'FD_COL_T9P4F5',
+        //         key: 'FD_COL_T9P4F5',
+        //         width: 130,
+        //         align: 'center' as const,
+        //         sorter: (a: LimsData, b: LimsData) => {
+        //             const valA = a.FD_COL_T9P4F5 || 0;
+        //             const valB = b.FD_COL_T9P4F5 || 0;
+        //             return valA - valB;
+        //         },
+        //         render: (text: number) => text || '0',
+        //     },
+        //     {
+        //         title: 'TEM测试点数',
+        //         dataIndex: 'FD_TEM_COUNT',
+        //         key: 'FD_TEM_COUNT',
+        //         width: 130,
+        //         align: 'center' as const,
+        //         sorter: (a: LimsData, b: LimsData) => {
+        //             const valA = a.FD_TEM_COUNT || 0;
+        //             const valB = b.FD_TEM_COUNT || 0;
+        //             return valA - valB;
+        //         },
+        //         render: (text: number) => text || '0',
+        //     }
+        // ] : [
+        //     {
+        //         title: '测试点数',
+        //         dataIndex: 'DOC_PT',
+        //         key: 'DOC_PT',
+        //         width: 100,
+        //         align: 'center' as const,
+        //         sorter: (a: LimsData, b: LimsData) => {
+        //             const strA = (a.DOC_PT || '').toString().trim();
+        //             const strB = (b.DOC_PT || '').toString().trim();
+        //             return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+        //         },
+        //         render: (text: number) => text || '0',
+        //     }
+        // ]),
+
         {
             title: '测试点数',
             dataIndex: 'DOC_PT',
             key: 'DOC_PT',
             width: 100,
             align: 'center' as const,
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_PT || '').toString().trim();
+                const strB = (b.DOC_PT || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
             render: (text: number) => text || '0',
         },
+
         {
             title: '优先级',
             dataIndex: 'DOC_PRIORITY',
@@ -489,8 +631,8 @@ const App: React.FC = () => {
                 return text === '1' ? 'B' : text === '1' ? 'A' : 'C';
             },
             sorter: (a: LimsData, b: LimsData) => {
-                const strA = (a.DOC_NUMBER || '').toString().trim();
-                const strB = (b.DOC_NUMBER || '').toString().trim();
+                const strA = (a.DOC_PRIORITY || '').toString().trim();
+                const strB = (b.DOC_PRIORITY || '').toString().trim();
                 return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
             },
         },
@@ -500,6 +642,11 @@ const App: React.FC = () => {
             key: 'DOC_STATE',
             width: 100,
             align: 'center' as const,
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_STATE || '').toString().trim();
+                const strB = (b.DOC_STATE || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
             render: (text: string) => text === '1' ? '是' : text === '0' ? '否' : '-',
         },
         {
@@ -509,7 +656,11 @@ const App: React.FC = () => {
             width: 100,
             align: 'center' as const,
             //render: (text: string) => text || '-',
-
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_SITE || '').toString().trim();
+                const strB = (b.DOC_SITE || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
             render: (text: string) => {
                 //text === '1' ? '是' : text === '0' ? '否' : '-'
                 const item = statusList.find(item => item.value === text);
@@ -517,12 +668,48 @@ const App: React.FC = () => {
             },
         },
         {
-            title: '流入当前站点时长',
+            title: (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>流入当前站点时长</span>
+                    <a
+                        onClick={() => setIsHourMode(!isHourMode)}
+                        style={{ fontSize: '12px', color: '#1890ff' }}
+                    >
+                        [{isHourMode ? '分钟' : '小时'}]
+                    </a>
+                </div>
+            ),
             dataIndex: 'DOC_NEWSITETIME',
             key: 'DOC_NEWSITETIME',
             width: 150,
             align: 'center' as const,
-            render: (text: string) => text || '-',
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_NEWSITETIME || '').toString().trim();
+                const strB = (b.DOC_NEWSITETIME || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
+            render: (text: string) => {
+                if (!text) return '-';
+                const totalMinutes = parseInt(text, 10);  // 直接作为分钟数
+                if (isNaN(totalMinutes)) return '-';
+
+                if (isHourMode) {
+                    // 小时模式：分钟 / 60 = 小时
+                    const hours = totalMinutes / 60;
+                    const formattedHours = Math.round(hours * 10) / 10;
+                    if (Number.isInteger(formattedHours)) {
+                        return `${formattedHours}小时`;
+                    }
+                    return `${formattedHours.toFixed(1)}小时`;
+                } else {
+                    // 分钟模式：直接显示分钟，保留一位小数
+                    const formattedMinutes = Math.round(totalMinutes * 10) / 10;
+                    if (Number.isInteger(formattedMinutes)) {
+                        return `${formattedMinutes}分钟`;
+                    }
+                    return `${formattedMinutes.toFixed(1)}分钟`;
+                }
+            }
         },
         // {
         //     title: '项目群',
@@ -532,28 +719,51 @@ const App: React.FC = () => {
         //     ellipsis: true,
         //     render: (text: string) => text || '-',
         // },
+        // {
+        //     title: '对接窗口',
+        //     dataIndex: 'FD_TARGET_NAME ',
+        //     key: 'FD_TARGET_NAME ',
+        //     width: 120,
+        //     ellipsis: true,
+        //     sorter: (a: LimsData, b: LimsData) => {
+        //         const strA = (a.FD_TARGET_NAME  || '').toString().trim();
+        //         const strB = (b.FD_TARGET_NAME  || '').toString().trim();
+        //         return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+        //     },
+        //     render: (text: string) => text || '-',
+        // },
         {
             title: '项目号',
             dataIndex: 'DOC_PROJECT',
             key: 'DOC_PROJECT',
             width: 120,
             ellipsis: true,
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_PROJECT || '').toString().trim();
+                const strB = (b.DOC_PROJECT || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
             render: (text: string) => text || '-',
         },
-        {
-            title: '预计结果上传时间',
-            dataIndex: 'DOC_UPDATETIME',
-            key: 'DOC_UPDATETIME',
-            width: 150,
-            align: 'center' as const,
-            render: (text: string) => text || '-',
-        },
+        // {
+        //     title: '预计结果上传时间',
+        //     dataIndex: 'DOC_UPDATETIME',
+        //     key: 'DOC_UPDATETIME',
+        //     width: 150,
+        //     align: 'center' as const,
+        //     render: (text: string) => text || '-',
+        // },
         {
             title: '时效',
             dataIndex: 'DOC_AGING',
             key: 'DOC_AGING',
             width: 120,
             align: 'center' as const,
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_AGING || '').toString().trim();
+                const strB = (b.DOC_AGING || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
             render: (text: string) => text || '-',
         },
     ];
@@ -564,7 +774,7 @@ const App: React.FC = () => {
             };
                 // eslint-disable-next-line react-hooks/rules-of-hooks
             const query = useQuery();
-            const fdDate = query.get('fdDate');
+            const fdDate = query.get('fdData');
             if(fdDate!=null&&fdDate!=""){
                 var arr=fdDate.split(";")
                 //alert(arr)
@@ -613,7 +823,7 @@ const App: React.FC = () => {
                                 <div>
                                     <span style={{ marginRight: '8px' , fontWeight: 'bold'}}>项目号：</span>
                                     <Input
-                                        placeholder="单号"
+                                        placeholder="项目号"
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                                             handleFilterChange("fd_col_8mkygi", "like", e.target.value)
                                         }
@@ -760,7 +970,7 @@ const App: React.FC = () => {
                     loading={loading}
                     onRow={(record) => {
                         return {
-                            onClick: (event) => { window.location.href = record.FD_URL+record.FD_MAIM_ID; }//navigate("/ProjectDashboard/"+c.fdId); console.info('点击成功:',record)}, // 点击行
+                            onClick: (event) => { window.open(record.FD_URL+record.FD_MAIM_ID, '_blank') }//navigate("/ProjectDashboard/"+c.fdId); console.info('点击成功:',record)}, // 点击行
                         };
                     }}
                     pagination={{
