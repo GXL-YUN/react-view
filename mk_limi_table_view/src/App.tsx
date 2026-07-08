@@ -1,21 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Table, Button, Checkbox, message, Input } from 'antd';
 import { useNavigate, Link, NavLink } from 'react-router-dom';
 import { DatePicker, Space } from 'antd';
+import {
+    SearchOutlined,
+    ReloadOutlined,
+    ExportOutlined,
+    SettingOutlined,
+    CloseOutlined,
+    FolderOutlined,
+    UserOutlined,
+} from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 const { RangePicker } = DatePicker;
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { PersonnelData, PersonnelTagsProps, SelectedItem } from "./componce/PersonnelTags"
-
-
 import PersonnelTagsIndex from "./componce/PersonnelTagsIndex"
-
-
 import { OrgSelector, SelectionMode, SelectionType } from '@soutetu0087/org-selector/dist/index.mjs';
 import '@soutetu0087/org-selector/dist/style.css';
+import './App.css';
 
-// 定义接口类型
 interface LimsData {
     FD_MAIM_ID: string;
     DOC_STATE: string;
@@ -28,9 +33,8 @@ interface LimsData {
     DOC_AGING: string;
     FD_ID: string;
     FD_CREATOR_ID: string;
-    // 表格列使用的字段
     RN?: number;
-    FD_URL:string;
+    FD_URL: string;
     fdId?: string;
     FD_COL_VY6XBM?: string;
     FD_COL_6YI0L7?: string;
@@ -50,7 +54,8 @@ interface LimsData {
     FD_TEM_COUNT?: number;
     FD_COL_T9P4F5?: number;
     FD_TARGET_NAME?: string;
-
+    FD_COL_6LIFCJ_NAME?: string;
+    FD_COL_1FITRK_NAME?: string;
 }
 
 interface ApiResponse {
@@ -64,7 +69,6 @@ interface ApiResponse {
     };
 }
 
-
 interface FilterState {
     key: string;
     value: any;
@@ -73,8 +77,6 @@ interface FilterState {
 
 const App: React.FC = () => {
     const [values, setValues] = useState<String[]>([]);
-
-    //const navigate = useNavigate();
     const [data, setData] = useState<LimsData[]>([]);
     const [loading, setLoading] = useState(false);
     const [total, setTotal] = useState(0);
@@ -84,190 +86,171 @@ const App: React.FC = () => {
     const [localPageSize, setLocalPageSize] = useState(10);
     const [flage, setFlage] = useState(false);
     const [fdType, setFdType] = useState("");
-    //人员
     const [visible, setVisible] = useState(false);
     const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
+    const [visibles, setVisibles] = useState(false);
+    const [selectedItemss, setSelectedItemss] = useState<SelectedItem[]>([]);
+    const [isHourMode, setIsHourMode] = useState(true);
+    const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
     const handleConfirm = (selected: SelectedItem[]) => {
-        console.log('选择结果:', selected);
         setSelectedItems(selected);
-        const userId=[]
         const names = selected.map(user => user.id);
-        handleFilterChange("fd_col_6lifcj_id", "in",names )
+        handleFilterChange("fd_col_6lifcj_id", "in", names);
         setVisible(false);
     };
 
-
-    const [visibles, setVisibles] = useState(false);
-    const [selectedItemss, setSelectedItemss] = useState<SelectedItem[]>([]);
-
-    const [isHourMode, setIsHourMode] = useState(true);
-
     const handleConfirms = (selected: SelectedItem[]) => {
-        console.log('选择结果:', selected);
-        setSelectedItems(selected);
-        const userId=[]
+        setSelectedItemss(selected);
         const names = selected.map(user => user.id);
-        handleFilterChange("fd_col_1fitrk_id", "eq",names )
+        handleFilterChange("fd_col_1fitrk_id", "eq", names);
         setVisibles(false);
     };
-    //     const names = selected.map(user => user.id);
-    //      handleFilterChange("fd_col_d86pbv_id", "eq",names )
-    //     setVisible(false);
-    // };
-    //人员
-    const processStatusOptions =[
-    // 模拟的流程状态选项
-    { label: '测试申请', value: '40'  ,key:"getXpsAll" },
-    { label: '领导审批', value: '41' ,key:"getXpsAll"},
-    { label: '接样中', value: '0' ,key:"getXpsAll"},
-    { label: '待前处理', value: '10' ,key:"getXpsAll"},
-    { label: '前处理', value: '2',key:"getXpsAll" },
-    { label: '待测试', value: '11',key:"getXpsAll" },
-    { label: '测试', value: '3' ,key:"getXpsAll"},
-    { label: '待数据处理', value: '12' ,key:"getXpsAll"},
-    { label: '数据处理', value: '4',key:"getXpsAll" },
-    { label: '二次质审', value: '5' ,key:"getXpsAll"},
-    { label: '结案审批', value: '8' ,key:"getXpsAll"},
-    { label: '已结案', value: '9',key:"getXpsAll" },
-    { label: '交接审批', value: '16',key:"getXpsAll" },
-    { label: '委外中', value: '66',key:"getXpsAll" },
 
-    { label: '测试申请', value: '40' ,key:"getSimsAll"},
-    { label: '领导审批', value: '41' ,key:"getSimsAll" },
-    { label: '接样中', value: '0'  ,key:"getSimsAll"},
-    { label: '待前处理', value: '10'  ,key:"getSimsAll"},
-    { label: '前处理', value: '2'  ,key:"getSimsAll"},
-    { label: '待测试', value: '11'  ,key:"getSimsAll"},
-    { label: '测试', value: '3'  ,key:"getSimsAll"},
-    { label: '待数据处理', value: '12'  ,key:"getSimsAll"},
-    { label: '数据处理', value: '4' ,key:"getSimsAll" },
-    { label: '测试负责人', value: '5'  ,key:"getSimsAll"},
-    { label: '二次质审', value: '7'  ,key:"getSimsAll"},
-    { label: '结案审批', value: '8'  ,key:"getSimsAll"},
-    { label: '已结案', value: '9' ,key:"getSimsAll" },
-    { label: '交接审批', value: '16'  ,key:"getSimsAll"},
-    { label: '委外中', value: '66'  ,key:"getSimsAll"},
+    const processStatusOptions = [
+        { label: '测试申请', value: '40', key: "getXpsAll" },
+        { label: '领导审批', value: '41', key: "getXpsAll" },
+        { label: '接样中', value: '0', key: "getXpsAll" },
+        { label: '待前处理', value: '10', key: "getXpsAll" },
+        { label: '前处理', value: '2', key: "getXpsAll" },
+        { label: '待测试', value: '11', key: "getXpsAll" },
+        { label: '测试', value: '3', key: "getXpsAll" },
+        { label: '待数据处理', value: '12', key: "getXpsAll" },
+        { label: '数据处理', value: '4', key: "getXpsAll" },
+        { label: '二次质审', value: '5', key: "getXpsAll" },
+        { label: '结案审批', value: '8', key: "getXpsAll" },
+        { label: '已结案', value: '9', key: "getXpsAll" },
+        { label: '交接审批', value: '16', key: "getXpsAll" },
+        { label: '委外中', value: '66', key: "getXpsAll" },
 
-    { label: '测试申请', value: '0'  ,key:"getVpdAll"},
-    { label: '领导审批', value: '1' ,key:"getVpdAll"},
-    { label: '接样中', value: '2' ,key:"getVpdAll"},
-    { label: '待测试', value: '8' ,key:"getVpdAll"},
-    { label: '测试', value: '3',key:"getVpdAll" },
-    { label: '待数据处理', value: '9' ,key:"getVpdAll"},
-    { label: '数据处理', value: '4',key:"getVpdAll" },
-    { label: '技术负责人审批', value: '7',key:"getVpdAll" },
-    { label: '结案审批', value: '5' ,key:"getVpdAll"},
-    { label: '已结案', value: '6' ,key:"getVpdAll"},
-    { label: '委外中', value: '66' ,key:"getVpdAll"},
+        { label: '测试申请', value: '40', key: "getSimsAll" },
+        { label: '领导审批', value: '41', key: "getSimsAll" },
+        { label: '接样中', value: '0', key: "getSimsAll" },
+        { label: '待前处理', value: '10', key: "getSimsAll" },
+        { label: '前处理', value: '2', key: "getSimsAll" },
+        { label: '待测试', value: '11', key: "getSimsAll" },
+        { label: '测试', value: '3', key: "getSimsAll" },
+        { label: '待数据处理', value: '12', key: "getSimsAll" },
+        { label: '数据处理', value: '4', key: "getSimsAll" },
+        { label: '测试负责人', value: '5', key: "getSimsAll" },
+        { label: '二次质审', value: '7', key: "getSimsAll" },
+        { label: '结案审批', value: '8', key: "getSimsAll" },
+        { label: '已结案', value: '9', key: "getSimsAll" },
+        { label: '交接审批', value: '16', key: "getSimsAll" },
+        { label: '委外中', value: '66', key: "getSimsAll" },
 
-    { label: '接样中', value: '0', key: "getSemAll" },
-    { label: 'SOP编制', value: '1', key: "getSemAll" },
-    { label: '制样', value: '2', key: "getSemAll" },
-    { label: '拍摄', value: '3', key: "getSemAll" },
-    { label: '班组长审批', value: '5', key: "getSemAll" },
-    { label: '二次质审', value: '7', key: "getSemAll" },
-    { label: '结案审批', value: '8', key: "getSemAll" },
-    { label: '已结案', value: '9', key: "getSemAll" },
-    { label: '待制样', value: '10', key: "getSemAll" },
-    { label: '待拍摄', value: '11', key: "getSemAll" },
-    { label: '测试申请', value: '13', key: "getSemAll" },
-    { label: '待SOP编制', value: '17', key: "getSemAll" },
-    { label: '领导审批', value: '20', key: "getSemAll" },
-    { label: '返工等待', value: '25', key: "getSemAll" },
-    { label: '外诉已开单', value: '40', key: "getSemAll" },
-    { label: '委外中', value: '66', key: "getSemAll" },
+        { label: '测试申请', value: '0', key: "getVpdAll" },
+        { label: '领导审批', value: '1', key: "getVpdAll" },
+        { label: '接样中', value: '2', key: "getVpdAll" },
+        { label: '待测试', value: '8', key: "getVpdAll" },
+        { label: '测试', value: '3', key: "getVpdAll" },
+        { label: '待数据处理', value: '9', key: "getVpdAll" },
+        { label: '数据处理', value: '4', key: "getVpdAll" },
+        { label: '技术负责人审批', value: '7', key: "getVpdAll" },
+        { label: '结案审批', value: '5', key: "getVpdAll" },
+        { label: '已结案', value: '6', key: "getVpdAll" },
+        { label: '委外中', value: '66', key: "getVpdAll" },
 
+        { label: '接样中', value: '0', key: "getSemAll" },
+        { label: 'SOP编制', value: '1', key: "getSemAll" },
+        { label: '制样', value: '2', key: "getSemAll" },
+        { label: '拍摄', value: '3', key: "getSemAll" },
+        { label: '班组长审批', value: '5', key: "getSemAll" },
+        { label: '二次质审', value: '7', key: "getSemAll" },
+        { label: '结案审批', value: '8', key: "getSemAll" },
+        { label: '已结案', value: '9', key: "getSemAll" },
+        { label: '待制样', value: '10', key: "getSemAll" },
+        { label: '待拍摄', value: '11', key: "getSemAll" },
+        { label: '测试申请', value: '13', key: "getSemAll" },
+        { label: '待SOP编制', value: '17', key: "getSemAll" },
+        { label: '领导审批', value: '20', key: "getSemAll" },
+        { label: '返工等待', value: '25', key: "getSemAll" },
+        { label: '外诉已开单', value: '40', key: "getSemAll" },
+        { label: '委外中', value: '66', key: "getSemAll" },
 
-    { label: '接样中', value: '0', key: "getTemAll" },
-    { label: 'SOP编制', value: '1', key: "getTemAll" },
-    { label: 'topview', value: '2', key: "getTemAll" },
-    { label: '前处理', value: '3', key: "getTemAll" },
-    { label: 'FIB', value: '4', key: "getTemAll" },
-    { label: '班组长审批', value: '5', key: "getTemAll" },
-    { label: 'TEM拍摄', value: '6', key: "getTemAll" },
-    { label: '二次质审', value: '7', key: "getTemAll" },
-    { label: '结案审批', value: '8', key: "getTemAll" },
-    { label: '已结案', value: '9', key: "getTemAll" },
-    { label: '待制样', value: '10', key: "getTemAll" },
-    { label: '待拍摄', value: '11', key: "getTemAll" },
-    { label: '待topview', value: '12', key: "getTemAll" },
-    { label: '待前处理', value: '13', key: "getTemAll" },
-    { label: '待FIB', value: '14', key: "getTemAll" },
-    { label: '待TEM拍摄', value: '15', key: "getTemAll" },
-    { label: '交接审批', value: '16', key: "getTemAll" },
-    { label: '待SOP编制', value: '17', key: "getTemAll" },
-    { label: '测试申请', value: '18', key: "getTemAll" },
-    { label: '领导审批', value: '20', key: "getTemAll" },
-    { label: '返工等待', value: '25', key: "getTemAll" },
-    { label: '外诉已开单', value: '40', key: "getTemAll" },
-    { label: '委外中', value: '66', key: "getTemAll" }
+        { label: '接样中', value: '0', key: "getTemAll" },
+        { label: 'SOP编制', value: '1', key: "getTemAll" },
+        { label: 'topview', value: '2', key: "getTemAll" },
+        { label: '前处理', value: '3', key: "getTemAll" },
+        { label: 'FIB', value: '4', key: "getTemAll" },
+        { label: '班组长审批', value: '5', key: "getTemAll" },
+        { label: 'TEM拍摄', value: '6', key: "getTemAll" },
+        { label: '二次质审', value: '7', key: "getTemAll" },
+        { label: '结案审批', value: '8', key: "getTemAll" },
+        { label: '已结案', value: '9', key: "getTemAll" },
+        { label: '待制样', value: '10', key: "getTemAll" },
+        { label: '待拍摄', value: '11', key: "getTemAll" },
+        { label: '待topview', value: '12', key: "getTemAll" },
+        { label: '待前处理', value: '13', key: "getTemAll" },
+        { label: '待FIB', value: '14', key: "getTemAll" },
+        { label: '待TEM拍摄', value: '15', key: "getTemAll" },
+        { label: '交接审批', value: '16', key: "getTemAll" },
+        { label: '待SOP编制', value: '17', key: "getTemAll" },
+        { label: '测试申请', value: '18', key: "getTemAll" },
+        { label: '领导审批', value: '20', key: "getTemAll" },
+        { label: '返工等待', value: '25', key: "getTemAll" },
+        { label: '外诉已开单', value: '40', key: "getTemAll" },
+        { label: '委外中', value: '66', key: "getTemAll" }
+    ];
 
-    ]
     type StatusItem = {
         label: string;
         value: string;
-        key:string;
+        key: string;
     };
 
-
     const statusList: StatusItem[] = [
-        { label: '接样中', value: '0' ,key:""},
-        { label: 'sop编制', value: '1'  ,key:""},
-        { label: 'topview', value: '2' ,key:"" },
-        { label: '前处理', value: '3' ,key:"" },
-        { label: 'FIB', value: '4' ,key:"" },
-        { label: '班组长审批', value: '5'  ,key:""},
-        { label: 'TEM拍摄', value: '6' ,key:"" },
-        { label: '二次质审', value: '7'  ,key:""},
-        { label: '结案审批', value: '8'  ,key:""},
-        { label: '已结案', value: '9' ,key:"" },
-        { label: '领导审批', value: '20'  ,key:""},
-        { label: '待topview', value: '12' ,key:"" },
-        { label: '待前处理', value: '13' ,key:"" },
-        { label: '待FIB', value: '14'  ,key:""},
-        { label: '待TEM拍摄', value: '15' ,key:"" },
-        { label: '交接审批', value: '16' ,key:"" },
-        { label: '待sop编制', value: '17' ,key:"" },
-        { label: '测试申请', value: '18' ,key:"" },
-        { label: '返工等待', value: '25'  ,key:""},
-        { label: '外诉已开单', value: '40'  ,key:""},
-        { label: '委外中', value: '66'  ,key:""},
-        { label: '废弃', value: '70'  ,key:""}
+        { label: '接样中', value: '0', key: "" },
+        { label: 'sop编制', value: '1', key: "" },
+        { label: 'topview', value: '2', key: "" },
+        { label: '前处理', value: '3', key: "" },
+        { label: 'FIB', value: '4', key: "" },
+        { label: '班组长审批', value: '5', key: "" },
+        { label: 'TEM拍摄', value: '6', key: "" },
+        { label: '二次质审', value: '7', key: "" },
+        { label: '结案审批', value: '8', key: "" },
+        { label: '已结案', value: '9', key: "" },
+        { label: '领导审批', value: '20', key: "" },
+        { label: '待topview', value: '12', key: "" },
+        { label: '待前处理', value: '13', key: "" },
+        { label: '待FIB', value: '14', key: "" },
+        { label: '待TEM拍摄', value: '15', key: "" },
+        { label: '交接审批', value: '16', key: "" },
+        { label: '待sop编制', value: '17', key: "" },
+        { label: '测试申请', value: '18', key: "" },
+        { label: '返工等待', value: '25', key: "" },
+        { label: '外诉已开单', value: '40', key: "" },
+        { label: '委外中', value: '66', key: "" },
+        { label: '废弃', value: '70', key: "" }
     ];
-
 
     const fd_type = [
         { label: 'A', value: '2+' },
         { label: 'B', value: '1' },
         { label: 'C', value: 'C' },
-
     ];
-
 
     const fd_lable = [
         { label: '正常', value: '0' },
         { label: '返工', value: '1' }
     ];
+
     const FD_DOC_STATUS = [
         { label: '草稿', value: '10' },
         { label: '待审', value: '30' },
         { label: '结束', value: '20' },
         { label: '废弃', value: '00' },
         { label: '驳回', value: '11' }
-
     ];
 
-    // 获取数据
     const fetchData = async (page: number = current, size: number = localPageSize, params: FilterState[] = filters) => {
         setLoading(true);
         const useQuery = () => {
             return new URLSearchParams(window.location.search);
         };
-        // eslint-disable-next-line react-hooks/rules-of-hooks
         const query = useQuery();
         const fdType = query.get('fdType');
-        setFdType(fdType+"");
+        setFdType(fdType + "");
         try {
             const response = await axios.post<ApiResponse>(
                 '/ekp_mkpass/back/lims/LimsTemListController/' + fdType,
@@ -279,17 +262,8 @@ const App: React.FC = () => {
             );
             if (response.data.status === 0) {
                 const responseData = response.data.data;
-                console.log('接口返回:', {
-                    total: responseData.total,
-                    current: responseData.current,
-                    pageSize: responseData.size,
-                    dataLength: responseData.list?.length || 0,
-                    list: responseData.list
-                });
-
                 setData(responseData.list || []);
                 setTotal(responseData.total || 0);
-                // 确保页码正确（接口返回的current可能从0开始或1开始）
                 setCurrent(page);
                 setPageSize(size);
                 setLocalPageSize(size);
@@ -303,27 +277,26 @@ const App: React.FC = () => {
             setLoading(false);
         }
     };
+
     const changView = () => {
-        setFlage(!flage)
+        setFlage(!flage);
     };
-    // 处理筛选变化
+
     const handleFilterChange = (filterName: string, type: string, checkedValues: any) => {
-        console.log('筛选器名称:', filterName, '选中的值:', checkedValues);
-        //const newFilters = checkedValues.map(val => ({ key: filterName, value: val }));
-
-        debugger
-
-        if(filterName=="DOC_SITE"){
-            setValues(checkedValues)
-
+        if (filterName == "DOC_SITE") {
+            setValues(checkedValues);
         }
 
-        if (checkedValues != null) {
-
-
+        if (checkedValues === null || checkedValues === undefined ||
+            (Array.isArray(checkedValues) && checkedValues.length === 0)) {
+            const existingOtherFilters = filters.filter(item => item.key !== filterName);
+            setFilters(existingOtherFilters);
+            setCurrent(1);
+            fetchData(1, localPageSize, existingOtherFilters);
+            return;
         }
-        const newFilters = [{ key: filterName, value: checkedValues, type: type }]
 
+        const newFilters = [{ key: filterName, value: checkedValues, type: type }];
         const existingOtherFilters = filters.filter(item => item.key !== filterName);
         const combinedFilters = [...newFilters, ...existingOtherFilters];
 
@@ -332,13 +305,18 @@ const App: React.FC = () => {
         fetchData(1, localPageSize, combinedFilters);
     };
 
-    // 处理分页变化
-    const handleTableChange = (pagination: any) => {
-        console.log('分页变化:', {
-            current: pagination.current,
-            pageSize: pagination.pageSize
-        });
+    const handleReset = () => {
+        setFilters([]);
+        setValues([]);
+        setSelectedItems([]);
+        setSelectedItemss([]);
+        setSelectedRowKeys([]);
+        setCurrent(1);
+        fetchData(1, localPageSize, []);
+        message.info('已重置所有筛选条件');
+    };
 
+    const handleTableChange = (pagination: any) => {
         if (pagination.pageSize && pagination.pageSize !== localPageSize) {
             setLocalPageSize(pagination.pageSize);
             setCurrent(1);
@@ -349,26 +327,17 @@ const App: React.FC = () => {
         }
     };
 
-    // 导出数据
-    // const handleExport = () => {
-    //     message.info('导出功能待实现');
-    // };
-
-    // 导出数据函数 - 导出当前页面数据
     const handleExport = () => {
         if (data.length === 0) {
             message.warning('没有数据可以导出');
             return;
         }
         try {
-            // 准备数据
             const exportData = data.map((item, index) => {
-                const baseData = {
+                return {
                     序号: (current - 1) * localPageSize + index + 1,
                     文档名称: item.DOC_NAME || '',
                     单号: item.DOC_NUMBER || '',
-                    // 接样时间: item.FD_CREATE_TIME || '',
-                    // 样品柜位: item.DOC_CABINETANDGRID || '',
                     样品数量: item.DOC_NUM || 0,
                     测试点数: item.DOC_PT || 0,
                     优先级: item.DOC_PRIORITY || '',
@@ -378,99 +347,34 @@ const App: React.FC = () => {
                     项目号: item.DOC_PROJECT || '',
                     时效: item.DOC_AGING || ''
                 };
-
-                // 如果是 TEM 流程，添加 FIB 和 TEM 测试点数
-                // if (fdType === 'getTemAll') {
-                //     return {
-                //         ...baseData,
-                //         'FIB测试点数': item.FD_COL_T9P4F5 || 0,
-                //         'TEM测试点数': item.FD_TEM_COUNT || 0
-                //     };
-                // } else {
-                //     // 其他流程显示测试点数
-                //     return {
-                //         ...baseData,
-                //         测试点数: item.DOC_PT || 0
-                //     };
-                // }
             });
 
-            // 创建工作簿
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.json_to_sheet(exportData);
 
-            // 设置列宽
-            let wscols =  [
-                { wch: 8 },   // 序号
-                { wch: 30 },  // 文档名称
-                { wch: 20 },  // 单号
-                { wch: 20 },  // 接样时间
-                { wch: 15 },  // 样品柜位
-                { wch: 10 },  // 样品数量
-                { wch: 10 },  // 测试点数
-                { wch: 10 },  // 优先级
-                { wch: 10 },  // 是否为返工
-                { wch: 15 },  // 当前站点
-                { wch: 20 },  // 流入当前站点时长
-                { wch: 15 },  // 项目号
-                { wch: 15 },  // 时效
+            let wscols = [
+                { wch: 8 },
+                { wch: 30 },
+                { wch: 20 },
+                { wch: 10 },
+                { wch: 10 },
+                { wch: 10 },
+                { wch: 10 },
+                { wch: 15 },
+                { wch: 20 },
+                { wch: 15 },
+                { wch: 15 },
             ];
-            // if (fdType === 'getTemAll') {
-            //     wscols = [
-            //         { wch: 8 },   // 序号
-            //         { wch: 30 },  // 文档名称
-            //         { wch: 20 },  // 单号
-            //         { wch: 20 },  // 接样时间
-            //         { wch: 15 },  // 样品柜位
-            //         { wch: 10 },  // 样品数量
-            //         { wch: 12 },  // FIB测试点数
-            //         { wch: 12 },  // TEM测试点数
-            //         { wch: 10 },  // 优先级
-            //         { wch: 10 },  // 是否为返工
-            //         { wch: 15 },  // 当前站点
-            //         { wch: 20 },  // 流入当前站点时长
-            //         { wch: 15 },  // 项目号
-            //         { wch: 15 },  // 时效
-            //     ];
-            // } else {
-            //     wscols = [
-            //         { wch: 8 },   // 序号
-            //         { wch: 30 },  // 文档名称
-            //         { wch: 20 },  // 单号
-            //         { wch: 20 },  // 接样时间
-            //         { wch: 15 },  // 样品柜位
-            //         { wch: 10 },  // 样品数量
-            //         { wch: 10 },  // 测试点数
-            //         { wch: 10 },  // 优先级
-            //         { wch: 10 },  // 是否为返工
-            //         { wch: 15 },  // 当前站点
-            //         { wch: 20 },  // 流入当前站点时长
-            //         { wch: 15 },  // 项目号
-            //         { wch: 15 },  // 时效
-            //     ];
-            // }
             ws['!cols'] = wscols;
 
-            // 添加筛选条件信息作为备注
-            if (filters.length > 0) {
-                const filterText = `筛选条件: ${filters.map(f => `${f.key || f.value}`).join(', ')}`;
-                ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 14 } }];
-                ws['A1'] = { v: filterText, t: 's' };
-                ws['!rows'] = [{ hpt: 20 }];
-            }
-
-            // 添加工作表到工作簿
             XLSX.utils.book_append_sheet(wb, ws, '流程查看列表');
 
-            // 生成文件名
             const date = new Date();
             const dateStr = `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
             const timeStr = `${date.getHours().toString().padStart(2, '0')}${date.getMinutes().toString().padStart(2, '0')}`;
             const fileName = `流程查看列表_${dateStr}_${timeStr}.xlsx`;
 
-            // 导出文件
             XLSX.writeFile(wb, fileName);
-
             message.success(`导出成功！共 ${exportData.length} 条记录`);
         } catch (error) {
             console.error('导出失败:', error);
@@ -478,191 +382,106 @@ const App: React.FC = () => {
         }
     };
 
-
-    // 表格列定义
     const columns = [
         {
             title: '序号',
             key: 'index',
-            width: 80,
+            width: 60,
             align: 'center' as const,
-            render: (_: any, __: any, index: number) => {
-                // 计算当前页的序号
-                return (current - 1) * localPageSize + index + 1;
-            }
+            render: (_: any, __: any, index: number) => (current - 1) * localPageSize + index + 1,
         },
         {
             title: '文档名称',
             dataIndex: 'DOC_NAME',
             key: 'DOC_NAME',
-            width: 200,
-            ellipsis: true,
-            sorter: (a: LimsData, b: LimsData) => {
-                const strA = (a.DOC_NAME || '').toString().trim();
-                const strB = (b.DOC_NAME || '').toString().trim();
-                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            width: 280,
+            render: (text: string, record: LimsData) => {
+                const iconColors: Record<string, string> = {
+                    '0': '#eff6ff',
+                    '1': '#f0fdf4',
+                    '2': '#faf5ff',
+                    '3': '#fee2e2',
+                };
+                const iconColor = iconColors[String((record.FD_MAIM_ID?.length || 0) % 4)] || '#eff6ff';
+                const iconTextColor = ['#3b82f6', '#22c55e', '#a855f7', '#ef4444'][(record.FD_MAIM_ID?.length || 0) % 4] || '#3b82f6';
+                const isRework = record.DOC_STATE === '1';
+                return (
+                    <div className="doc-name">
+                        <div className="doc-icon" style={{ background: iconColor, color: iconTextColor }}>
+                            📄
+                        </div>
+                        <div className="doc-info">
+                            <div className="doc-title">
+                                {text}
+                                {isRework && <span className="tag tag-red">返工</span>}
+                            </div>
+                            <div className="doc-unit">
+                                委托单位：{record.FD_COL_1FITRK_NAME || '-'}
+                            </div>
+                        </div>
+                    </div>
+                );
             },
         },
         {
             title: '单号',
             dataIndex: 'DOC_NUMBER',
             key: 'DOC_NUMBER',
-            width: 150,
-            ellipsis: true,
-            sorter: (a: LimsData, b: LimsData) => {
-                const strA = (a.DOC_NUMBER || '').toString().trim();
-                const strB = (b.DOC_NUMBER || '').toString().trim();
-                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
-            },
+            width: 160,
+            render: (text: string) => <span style={{ color: '#2563eb' }}>{text || '-'}</span>,
         },
-        // {
-        //     title: '接样时间',
-        //     dataIndex: 'FD_CREATE_TIME',
-        //     key: 'FD_CREATE_TIME',
-        //     width: 150,
-        //     ellipsis: true,
-        //     sorter: (a: LimsData, b: LimsData) => {
-        //         const strA = (a.FD_CREATE_TIME || '').toString().trim();
-        //         const strB = (b.FD_CREATE_TIME || '').toString().trim();
-        //         return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
-        //     },
-        // },
-        // {
-        //     title: '样品柜位',
-        //     dataIndex: 'DOC_CABINETANDGRID',
-        //     key: 'DOC_CABINETANDGRID',
-        //     width: 120,
-        //     ellipsis: true,
-        //     sorter: (a: LimsData, b: LimsData) => {
-        //         const strA = (a.DOC_CABINETANDGRID || '').toString().trim();
-        //         const strB = (b.DOC_CABINETANDGRID || '').toString().trim();
-        //         return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
-        //     },
-        //     render: (text: string) => text || '-',
-        // },
-        // {
-        //     title: '测试柜位',
-        //     dataIndex: 'FD_COL_6YI0L7',
-        //     key: 'FD_COL_6YI0L7',
-        //     width: 120,
-        //     ellipsis: true,
-        //     render: (text: string) => text || '-',
-        // },
+        {
+            title: '样品相位',
+            dataIndex: 'FD_COL_1MRA3M',
+            key: 'FD_COL_1MRA3M',
+            width: 120,
+            render: (text: string) => text || '-',
+        },
         {
             title: '样品数量',
             dataIndex: 'DOC_NUM',
             key: 'DOC_NUM',
-            width: 100,
+            width: 80,
             align: 'center' as const,
-            sorter: (a: LimsData, b: LimsData) => {
-                const strA = (a.DOC_NUM || '').toString().trim();
-                const strB = (b.DOC_NUM || '').toString().trim();
-                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
-            },
             render: (text: number) => text || '0',
         },
-        // 在 columns 定义中，替换原来的测试点数列
-        // ...(fdType === 'getTemAll' ? [
-        //     {
-        //         title: 'FIB测试点数',
-        //         dataIndex: 'FD_COL_T9P4F5',
-        //         key: 'FD_COL_T9P4F5',
-        //         width: 130,
-        //         align: 'center' as const,
-        //         sorter: (a: LimsData, b: LimsData) => {
-        //             const valA = a.FD_COL_T9P4F5 || 0;
-        //             const valB = b.FD_COL_T9P4F5 || 0;
-        //             return valA - valB;
-        //         },
-        //         render: (text: number) => text || '0',
-        //     },
-        //     {
-        //         title: 'TEM测试点数',
-        //         dataIndex: 'FD_TEM_COUNT',
-        //         key: 'FD_TEM_COUNT',
-        //         width: 130,
-        //         align: 'center' as const,
-        //         sorter: (a: LimsData, b: LimsData) => {
-        //             const valA = a.FD_TEM_COUNT || 0;
-        //             const valB = b.FD_TEM_COUNT || 0;
-        //             return valA - valB;
-        //         },
-        //         render: (text: number) => text || '0',
-        //     }
-        // ] : [
-        //     {
-        //         title: '测试点数',
-        //         dataIndex: 'DOC_PT',
-        //         key: 'DOC_PT',
-        //         width: 100,
-        //         align: 'center' as const,
-        //         sorter: (a: LimsData, b: LimsData) => {
-        //             const strA = (a.DOC_PT || '').toString().trim();
-        //             const strB = (b.DOC_PT || '').toString().trim();
-        //             return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
-        //         },
-        //         render: (text: number) => text || '0',
-        //     }
-        // ]),
-
         {
             title: '测试点数',
             dataIndex: 'DOC_PT',
             key: 'DOC_PT',
             width: 100,
             align: 'center' as const,
-            sorter: (a: LimsData, b: LimsData) => {
-                const strA = (a.DOC_PT || '').toString().trim();
-                const strB = (b.DOC_PT || '').toString().trim();
-                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
-            },
             render: (text: number) => text || '0',
         },
-
         {
             title: '优先级',
             dataIndex: 'DOC_PRIORITY',
             key: 'DOC_PRIORITY',
-            width: 100,
+            width: 70,
             align: 'center' as const,
-
             render: (text: string) => {
-                //text === '1' ? '是' : text === '0' ? '否' : '-'
-                return text === '1' ? 'B' : text === '1' ? 'A' : 'C';
-            },
-            sorter: (a: LimsData, b: LimsData) => {
-                const strA = (a.DOC_PRIORITY || '').toString().trim();
-                const strB = (b.DOC_PRIORITY || '').toString().trim();
-                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+                const map: Record<string, string> = { '1': 'A', '2': 'B' };
+                const label = map[text] || 'C';
+                return <span className={`priority-badge priority-${label.toLowerCase()}`}>{label}</span>;
             },
         },
         {
-            title: '是否为返工',
+            title: '是否返工',
             dataIndex: 'DOC_STATE',
             key: 'DOC_STATE',
-            width: 100,
+            width: 80,
             align: 'center' as const,
-            sorter: (a: LimsData, b: LimsData) => {
-                const strA = (a.DOC_STATE || '').toString().trim();
-                const strB = (b.DOC_STATE || '').toString().trim();
-                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            render: (text: string) => {
+                const isRework = text === '1';
+                return <span className={isRework ? 'tag tag-red' : 'tag tag-green'}>{isRework ? '是' : '否'}</span>;
             },
-            render: (text: string) => text === '1' ? '是' : text === '0' ? '否' : '-',
         },
         {
             title: '当前站点',
             dataIndex: 'DOC_SITE',
             key: 'DOC_SITE',
-            width: 100,
-            align: 'center' as const,
-            //render: (text: string) => text || '-',
-            sorter: (a: LimsData, b: LimsData) => {
-                const strA = (a.DOC_SITE || '').toString().trim();
-                const strB = (b.DOC_SITE || '').toString().trim();
-                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
-            },
+            width: 110,
             render: (text: string) => {
-                //text === '1' ? '是' : text === '0' ? '否' : '-'
                 const item = statusList.find(item => item.value === text);
                 return item ? item.label : '未知状态';
             },
@@ -671,325 +490,373 @@ const App: React.FC = () => {
             title: (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span>流入当前站点时长</span>
-                    <a
-                        onClick={() => setIsHourMode(!isHourMode)}
-                        style={{ fontSize: '12px', color: '#1890ff' }}
-                    >
+                    <a onClick={() => setIsHourMode(!isHourMode)} style={{ fontSize: '12px', color: '#1890ff' }}>
                         [{isHourMode ? '分钟' : '小时'}]
                     </a>
                 </div>
             ),
             dataIndex: 'DOC_NEWSITETIME',
             key: 'DOC_NEWSITETIME',
-            width: 150,
+            width: 160,
             align: 'center' as const,
-            sorter: (a: LimsData, b: LimsData) => {
-                const strA = (a.DOC_NEWSITETIME || '').toString().trim();
-                const strB = (b.DOC_NEWSITETIME || '').toString().trim();
-                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
-            },
             render: (text: string) => {
                 if (!text) return '-';
-                const totalMinutes = parseInt(text, 10);  // 直接作为分钟数
+                const totalMinutes = parseInt(text, 10);
                 if (isNaN(totalMinutes)) return '-';
-
                 if (isHourMode) {
-                    // 小时模式：分钟 / 60 = 小时
                     const hours = totalMinutes / 60;
                     const formattedHours = Math.round(hours * 10) / 10;
-                    if (Number.isInteger(formattedHours)) {
-                        return `${formattedHours}小时`;
-                    }
-                    return `${formattedHours.toFixed(1)}小时`;
+                    return `${formattedHours}小时`;
                 } else {
-                    // 分钟模式：直接显示分钟，保留一位小数
                     const formattedMinutes = Math.round(totalMinutes * 10) / 10;
-                    if (Number.isInteger(formattedMinutes)) {
-                        return `${formattedMinutes}分钟`;
-                    }
-                    return `${formattedMinutes.toFixed(1)}分钟`;
+                    return `${formattedMinutes}分钟`;
                 }
             }
         },
-        // {
-        //     title: '项目群',
-        //     dataIndex: 'FD_COL_8MKYGI',
-        //     key: 'FD_COL_8MKYGI',
-        //     width: 120,
-        //     ellipsis: true,
-        //     render: (text: string) => text || '-',
-        // },
-        // {
-        //     title: '对接窗口',
-        //     dataIndex: 'FD_TARGET_NAME ',
-        //     key: 'FD_TARGET_NAME ',
-        //     width: 120,
-        //     ellipsis: true,
-        //     sorter: (a: LimsData, b: LimsData) => {
-        //         const strA = (a.FD_TARGET_NAME  || '').toString().trim();
-        //         const strB = (b.FD_TARGET_NAME  || '').toString().trim();
-        //         return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
-        //     },
-        //     render: (text: string) => text || '-',
-        // },
         {
-            title: '项目号',
-            dataIndex: 'DOC_PROJECT',
-            key: 'DOC_PROJECT',
-            width: 120,
-            ellipsis: true,
-            sorter: (a: LimsData, b: LimsData) => {
-                const strA = (a.DOC_PROJECT || '').toString().trim();
-                const strB = (b.DOC_PROJECT || '').toString().trim();
-                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
-            },
+            title: '接样时间',
+            dataIndex: 'FD_CREATE_TIME',
+            key: 'FD_CREATE_TIME',
+            width: 160,
             render: (text: string) => text || '-',
         },
-        // {
-        //     title: '预计结果上传时间',
-        //     dataIndex: 'DOC_UPDATETIME',
-        //     key: 'DOC_UPDATETIME',
-        //     width: 150,
-        //     align: 'center' as const,
-        //     render: (text: string) => text || '-',
-        // },
         {
-            title: '时效',
-            dataIndex: 'DOC_AGING',
-            key: 'DOC_AGING',
-            width: 120,
+            title: '项目号 / 对接窗口',
+            dataIndex: 'DOC_PROJECT',
+            key: 'DOC_PROJECT',
+            width: 180,
+            render: (text: string, record: LimsData) => (
+                <div>
+                    <div style={{ marginBottom: '4px' }}>
+                        <FolderOutlined style={{ color: '#f59e0b', marginRight: '4px' }} />
+                        <span style={{ color: '#7c3aed' }}>{text || '-'}</span>
+                    </div>
+                    <div>
+                        <UserOutlined style={{ color: '#6b7280', marginRight: '4px' }} />
+                        <span>{record.FD_COL_6LIFCJ_NAME || '-'}</span>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            title: '操作',
+            key: 'action',
+            width: 100,
             align: 'center' as const,
-            sorter: (a: LimsData, b: LimsData) => {
-                const strA = (a.DOC_AGING || '').toString().trim();
-                const strB = (b.DOC_AGING || '').toString().trim();
-                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
-            },
-            render: (text: string) => text || '-',
+            render: (_: any, record: LimsData) => (
+                <div className="actions">
+                    <button className="btn-link" onClick={() => window.open(record.FD_URL + record.FD_MAIM_ID, '_blank')}>详情</button>
+                    <span style={{ color: '#d9d9d9' }}>|</span>
+                    <button className="btn-link" onClick={() => window.open(record.FD_URL + record.FD_MAIM_ID, '_blank')}>流程</button>
+                </div>
+            )
         },
     ];
 
     useEffect(() => {
-            const useQuery = () => {
-                    return new URLSearchParams(window.location.search);
-            };
-                // eslint-disable-next-line react-hooks/rules-of-hooks
-            const query = useQuery();
-            const fdDate = query.get('fdData');
-            if(fdDate!=null&&fdDate!=""){
-                var arr=fdDate.split(";")
-                //alert(arr)
-                setValues(arr)
-                handleFilterChange("DOC_SITE", "in", arr as string[])
-            }else{
-                fetchData();
-            }
-             
-        // }
+        const useQuery = () => {
+            return new URLSearchParams(window.location.search);
+        };
+        const query = useQuery();
+        const fdDate = query.get('fdData');
+        if (fdDate != null && fdDate != "") {
+            var arr = fdDate.split(";");
+            setValues(arr);
+            handleFilterChange("DOC_SITE", "in", arr as string[]);
+        } else {
+            fetchData();
+        }
     }, []);
+
+    const stats = useMemo(() => {
+        const pending = data.filter(item =>
+            item.DOC_STATE === '10' || item.DOC_STATE === '30'
+        ).length;
+        const closed = data.filter(item => item.DOC_SITE === '9').length;
+        const rework = data.filter(item => item.DOC_STATE === '1').length;
+        const inProgress = data.filter(item => {
+            const s = item.DOC_SITE;
+            return s && s !== '9' && s !== '70' && item.DOC_STATE !== '1';
+        }).length;
+        const totalPoints = data.reduce((sum, item) => sum + (item.DOC_PT || 0), 0);
+        return { pending, inProgress, closed, rework, totalPoints };
+    }, [data]);
+
     return (
-        <div style={{ padding: '20px', backgroundColor: '#f0f2f5', minHeight: '100vh' }}>
-            {/* 顶部筛选区 */}
-            <div style={{ marginBottom: '20px', backgroundColor: '#fff', padding: '15px', borderRadius: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                    <h3 style={{ margin: 0 }}>流程查看列表</h3>
-                    <Button type="primary" onClick={handleExport}>导出数据</Button>
+        <div className="container">
+            {/* ==================== 顶部标题栏 ==================== */}
+            <div className="header">
+                <div className="header-left">
+                    <h1 className="header-title">TEM 测试流程查看列表</h1>
+                    <span className="badge">共 {total} 条</span>
+                </div>
+                <div className="header-right">
+                    <button className="btn" onClick={() => fetchData(current, localPageSize, filters)}>
+                        <ReloadOutlined />
+                        刷新
+                    </button>
+                    <button className="btn">
+                        <SettingOutlined />
+                        列设置
+                    </button>
+                    <button className="btn btn-primary" onClick={handleExport}>
+                        <ExportOutlined />
+                        导出数据
+                    </button>
+                </div>
+            </div>
+
+            {/* ==================== 统计卡片区域 ==================== */}
+            <div className="stats-grid">
+                <div className="stat-card">
+                    <div className="stat-header">
+                        <div className="stat-icon orange">⏰</div>
+                    </div>
+                    <div className="stat-value">{stats.pending}</div>
+                    <div className="stat-label">待处理单据</div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-header">
+                        <div className="stat-icon blue">▶️</div>
+                    </div>
+                    <div className="stat-value">{stats.inProgress}</div>
+                    <div className="stat-label">进行中测试</div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-header">
+                        <div className="stat-icon green">✅</div>
+                    </div>
+                    <div className="stat-value">{stats.closed}</div>
+                    <div className="stat-label">已结案</div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-header">
+                        <div className="stat-icon pink">↩️</div>
+                    </div>
+                    <div className="stat-value">{stats.rework}</div>
+                    <div className="stat-label">返工单据</div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-header">
+                        <div className="stat-icon purple">🎯</div>
+                    </div>
+                    <div className="stat-value">{stats.totalPoints}<span className="unit">点</span></div>
+                    <div className="stat-label">本月测试点数</div>
+                </div>
+            </div>
+
+            {/* ==================== 筛选面板 ==================== */}
+            <div className="filter-section">
+                <div className="filter-header">
+                    <div className="filter-title">
+                        <span>🔽</span>
+                        <span>筛选条件</span>
+                        <span className="filter-count">{filters.length}</span>
+                    </div>
+                    <div className="filter-actions">
+                        <button className="btn-link" onClick={handleReset}>重置</button>
+                        <button className="btn-link" onClick={changView}>
+                            {flage ? '收起筛选 ↑' : '展开筛选 ↓'}
+                        </button>
+                    </div>
                 </div>
 
-                {/* 流程状态筛选 */}
-                <div style={{ marginBottom: '15px' }}>
-                    <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <div style={{display:'flex', gap: '20px', alignItems: 'center'}}>
-                                <div>
-                                    <span style={{ marginRight: '8px', fontWeight: 'bold' }}>标题：</span>
-                                    <Input
-                                        placeholder="标题"
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                            handleFilterChange("DOC_NAME", "like", e.target.value)
-                                        }
-                                        style={{ width: '200px' }}
-                                    />
-                                </div>
-                                <div>
-                                    <span style={{ marginRight: '8px', fontWeight: 'bold' }}>单号：</span>
-                                    <Input
-                                        placeholder="单号"
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                            handleFilterChange("DOC_NUMBER", "like", e.target.value)
-                                        }
-                                        style={{ width: '200px' }}
-                                    />
-                                </div>
-                                <div>
-                                    <span style={{ marginRight: '8px' , fontWeight: 'bold'}}>项目号：</span>
-                                    <Input
-                                        placeholder="项目号"
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                            handleFilterChange("fd_col_8mkygi", "like", e.target.value)
-                                        }
-                                        style={{ width: '200px' }}
+                {/* 第一行：标题、单号、项目号 */}
+                <div className="filter-row">
+                    <div className="filter-group">
+                        <label className="form-label">标题：</label>
+                        <div className="input-with-icon">
+                            <span className="input-icon">🔍</span>
+                            <Input
+                                placeholder="请输入标题关键词"
+                                onChange={(e) => handleFilterChange("DOC_NAME", "like", e.target.value)}
+                                className="form-input"
+                                style={{ paddingLeft: '36px', height: '38px' }}
+                            />
+                        </div>
+                    </div>
+                    <div className="filter-group">
+                        <label className="form-label">单号：</label>
+                        <Input
+                            placeholder="请输入单号"
+                            onChange={(e) => handleFilterChange("DOC_NUMBER", "like", e.target.value)}
+                            className="form-input"
+                            style={{ height: '38px' }}
+                        />
+                    </div>
+                    <div className="filter-group">
+                        <label className="form-label">项目号：</label>
+                        <Input
+                            placeholder="请输入项目号"
+                            onChange={(e) => handleFilterChange("fd_col_8mkygi", "like", e.target.value)}
+                            className="form-input"
+                            style={{ height: '38px' }}
+                        />
+                    </div>
+                </div>
+
+                {/* 第二行：优先级、单据状态、是否返工 */}
+                <div className="filter-row">
+                    <div className="filter-group">
+                        <label className="form-label" style={{ paddingTop: '4px' }}>优先级：</label>
+                        <div className="checkbox-group">
+                            {fd_type.map(opt => (
+                                <label key={opt.value} className="checkbox-item">
+                                    <input type="checkbox" />
+                                    <span className={`priority-badge priority-${opt.label.toLowerCase()}`}>{opt.label}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="filter-group">
+                        <label className="form-label" style={{ paddingTop: '4px' }}>单据状态：</label>
+                        <Checkbox.Group
+                            className="checkbox-group"
+                            options={FD_DOC_STATUS.map(opt => ({ label: opt.label, value: opt.value }))}
+                            onChange={(values) => handleFilterChange("FD_DOC_STATUS", "in", values as string[])}
+                        />
+                    </div>
+                    <div className="filter-group">
+                        <label className="form-label" style={{ paddingTop: '4px' }}>是否返工：</label>
+                        <Checkbox.Group
+                            className="checkbox-group"
+                            options={fd_lable.map(opt => ({ label: opt.label, value: opt.value }))}
+                            onChange={(values) => handleFilterChange("DOC_STATE", "in", values as string[])}
+                        />
+                    </div>
+                </div>
+
+                {/* 第三行：站点状态 */}
+                <div className="filter-row">
+                    <div className="filter-group" style={{ flex: 2 }}>
+                        <label className="form-label" style={{ paddingTop: '4px' }}>站点状态：</label>
+                        <Checkbox.Group
+                            className="checkbox-group"
+                            options={processStatusOptions.filter(item => item.key === fdType).map(opt => ({ label: opt.label, value: opt.value }))}
+                            value={values}
+                            onChange={(values) => handleFilterChange("DOC_SITE", "in", values as string[])}
+                        />
+                    </div>
+                </div>
+
+                {/* 展开的筛选条件 */}
+                {flage && (
+                    <div>
+                        {/* 第四行：创建时间、接样时间 */}
+                        <div className="filter-row">
+                            <div className="filter-group">
+                                <label className="form-label">创建时间：</label>
+                                <div className="date-range">
+                                    <RangePicker
+                                        onChange={(date, dateString) => {
+                                            handleFilterChange("FD_CREATE_TIME", "betweenTime", dateString);
+                                        }}
+                                        style={{ width: '100%' }}
                                     />
                                 </div>
                             </div>
-                            <div style={{display:'flex', gap: '20px', alignItems: 'center'}}>
-                                <div>
-                                    <span style={{ marginRight: '8px', fontWeight: 'bold' }}>优先级：</span>
-                                    <Checkbox.Group
-                                        options={fd_type.map(opt => ({ label: opt.label, value: opt.value }))}
-                                        onChange={(values) => handleFilterChange("DOC_PRIORITY", "in", values as string[])}
-                                    />
-                                </div>
-                                <div>
-                                    <span style={{ marginRight: '8px', fontWeight: 'bold' }}>单据状态：</span>
-                                    <Checkbox.Group
-                                        options={FD_DOC_STATUS.map(opt => ({ label: opt.label, value: opt.value }))}
-                                        onChange={(values) => handleFilterChange("FD_DOC_STATUS", "in", values as string[])}
-                                    />
-                                </div>
-                                <div>
-                                    <span style={{ marginRight: '8px', fontWeight: 'bold' }}>是否返工：</span>
-                                    <Checkbox.Group
-                                        options={fd_lable.map(opt => ({ label: opt.label, value: opt.value }))}
-                                        onChange={(values) => handleFilterChange("DOC_STATE", "in", values as string[])}
+                            <div className="filter-group">
+                                <label className="form-label">接样时间：</label>
+                                <div className="date-range">
+                                    <RangePicker
+                                        onChange={(date, dateString) => {
+                                            handleFilterChange("FD_CREATE_TIME", "betweenTime", dateString);
+                                        }}
+                                        style={{ width: '100%' }}
                                     />
                                 </div>
                             </div>
-                            <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
-                                <div>
-                                    <span style={{ marginRight: '8px', fontWeight: 'bold' }}>站点状态：</span>
-                                    <Checkbox.Group
-                                        options={processStatusOptions.filter(item => item.key === fdType).map(opt => ({ label: opt.label, value: opt.value }))}
-                                        value={values}
-                                        onChange={(values) => handleFilterChange("DOC_SITE", "in", values as string[])}
+                        </div>
+
+                        {/* 第五行：接样人员、委托单位 + 操作按钮 */}
+                        <div className="filter-row">
+                            <div className="filter-group">
+                                <label className="form-label">接样人员：</label>
+                                <div className="select-input" onClick={() => setVisible(true)}>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="选择组织/人员"
+                                        value={selectedItems.map(item => item.name).join('、')}
+                                        readOnly
+                                        style={{ cursor: 'pointer' }}
                                     />
+                                    <span className="select-arrow">▼</span>
                                 </div>
+                            </div>
+                            <div className="filter-group">
+                                <label className="form-label">委托单位：</label>
+                                <div className="select-input" onClick={() => setVisibles(true)}>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="选择组织/人员"
+                                        value={selectedItemss.map(item => item.name).join('、')}
+                                        readOnly
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                    <span className="select-arrow">▼</span>
+                                </div>
+                            </div>
+                            <div className="filter-footer" style={{ marginTop: 0 }}>
+                                <button className="btn btn-primary" onClick={() => fetchData(1, localPageSize, filters)}>
+                                    <SearchOutlined />
+                                    查询
+                                </button>
+                                <button className="btn" onClick={handleReset}>
+                                    <ReloadOutlined />
+                                    重置
+                                </button>
                             </div>
                         </div>
                     </div>
-                    <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}></div>
-                    {/* 其他隐藏筛选数据 */}
-                    {flage && (
-                        <div>
-                            <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center',gap: '16px' }}>
-                                <div>
-                                    <span style={{ marginRight: '8px' , fontWeight: 'bold'}}>创建时间：</span>
-                                    <RangePicker
-                                        onChange={(date, dateString) => {
-                                            // dateString 默认是 YYYY-MM-DD 格式
-                                            handleFilterChange("FD_CREATE_TIME", "betweenTime", dateString);
-                                        }}
-                                        style={{ width: '200px' }}
-                                    />
-                                </div>
-                                <div>
-                                    <span style={{ marginRight: '8px', fontWeight: 'bold' }}>接样时间：</span>
-                                    <RangePicker
-                                        onChange={(date, dateString) => {
-                                            // dateString 默认是 YYYY-MM-DD 格式
-                                            handleFilterChange("FD_CREATE_TIME", "betweenTime", dateString);
-                                        }}
-                                        style={{ width: '200px' }}
-                                    />
-                                </div>
-                            </div>
-                            <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center' }}>
-                                <span style={{ marginRight: '8px' , fontWeight: 'bold'}}>接样人员：</span>
+                )}
+            </div>
 
-                                <PersonnelTagsIndex
-                                    data={selectedItems}
-                                    maxCount={15}
-                                    tagProps={{
-                                        color: 'green',
-                                        bordered: false,
-                                        title: `${selectedItems.map(p => p.fdName).join(', ')}`,
-                                        style: {
-                                            padding: '4px 8px',
-                                            borderRadius: '12px',
-                                            cursor: 'help'
-                                        }
-                                    }}
-                                />
-                                <button onClick={() => setVisible(true)}>
-                                    选择组织/人员
-                                </button>
-                                <OrgSelector
-                                    selectionMode={SelectionMode.PERSONNEL_ONLY}
-                                    selectionType={SelectionType.MULTIPLE}
-                                    visible={visible}
-                                    onConfirm={handleConfirm}
-                                    onCancel={() => setVisible(false)}
-                                />
-                            </div>
-    
-                            <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center' }}>
-                                <span style={{ marginRight: '8px' , fontWeight: 'bold'}}>委托单位：</span>
-                                <PersonnelTagsIndex
-                                    data={selectedItemss}
-                                    maxCount={15}
-                                    tagProps={{
-                                        color: 'green',
-                                        bordered: false,
-                                        title: `${selectedItemss.map(p => p.fdName).join(', ')}`,
-                                        style: {
-                                            padding: '4px 8px',
-                                            borderRadius: '12px',
-                                            cursor: 'help'
-                                        }
-                                    }}
-                                />
-                                <button onClick={() => setVisibles(true)}>
-                                    选择组织/人员
-                                </button>
-                                <OrgSelector
-                                    selectionMode={SelectionMode.DEPARTMENT_ONLY}
-                                    selectionType={SelectionType.MULTIPLE}
-                                    visible={visibles}
-                                    onConfirm={handleConfirms}
-                                    onCancel={() => setVisibles(false)}
-                                />
-
-                            </div>
-
- 
-                        </div>
-                    )}
-                </div>
-
-                {/* 其他筛选条件 */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Button style={{ fontWeight: 'bold', float: 'right' }} type='primary' size="small" onClick={changView} >{flage ? '收缩筛选条件' : '展开筛选条件'}</Button>
+            {/* ==================== 表格区域 ==================== */}
+            <div className="table-section">
+                <div className="table-container">
+                    <Table
+                        dataSource={data}
+                        columns={columns}
+                        rowKey="FD_MAIM_ID"
+                        loading={loading}
+                        onRow={(record) => ({
+                            onClick: () => window.open(record.FD_URL + record.FD_MAIM_ID, '_blank')
+                        })}
+                        pagination={{
+                            current,
+                            pageSize: localPageSize,
+                            total,
+                            showSizeChanger: true,
+                            showQuickJumper: true,
+                            showTotal: (total) => `共 ${total} 条记录，第 ${current} / ${Math.ceil(total / localPageSize)} 页`,
+                            pageSizeOptions: ['10', '20', '50', '100'],
+                        }}
+                        onChange={handleTableChange}
+                        scroll={{ x: 1600 }}
+                        size="middle"
+                        bordered={false}
+                        rowClassName={(record) => record.DOC_STATE === '1' ? 'row-rework' : ''}
+                    />
                 </div>
             </div>
 
-            {/* 列表区 */}
-            <div style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '8px' }}>
-                <Table
-                    dataSource={data}
-                    columns={columns}
-                    rowKey="FD_MAIM_ID"
-                    loading={loading}
-                    onRow={(record) => {
-                        return {
-                            onClick: (event) => { window.open(record.FD_URL+record.FD_MAIM_ID, '_blank') }//navigate("/ProjectDashboard/"+c.fdId); console.info('点击成功:',record)}, // 点击行
-                        };
-                    }}
-                    pagination={{
-                        current,
-                        pageSize: localPageSize,
-                        total,
-                        showSizeChanger: true,
-                        showQuickJumper: true,
-                        showTotal: (total) => `共 ${total} 条`,
-                        pageSizeOptions: ['10', '20', '50', '100', "1000"],
-                    }}
-                    onChange={handleTableChange}
-                    scroll={{ x: 'max-content' }}
-                    bordered
-                    locale={{
-                        emptyText: '暂无数据'
-                    }}
-                />
-            </div>
+            {/* ==================== OrgSelector 弹窗 ==================== */}
+            <OrgSelector
+                selectionMode={SelectionMode.PERSONNEL_ONLY}
+                selectionType={SelectionType.MULTIPLE}
+                visible={visible}
+                onConfirm={handleConfirm}
+                onCancel={() => setVisible(false)}
+            />
+            <OrgSelector
+                selectionMode={SelectionMode.DEPARTMENT_ONLY}
+                selectionType={SelectionType.MULTIPLE}
+                visible={visibles}
+                onConfirm={handleConfirms}
+                onCancel={() => setVisibles(false)}
+            />
         </div>
     );
 };
