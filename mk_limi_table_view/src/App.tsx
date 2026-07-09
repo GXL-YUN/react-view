@@ -422,6 +422,11 @@ const App: React.FC = () => {
                     </div>
                 );
             },
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_NAME || '').toString().trim();
+                const strB = (b.DOC_NAME || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
         },
         {
             title: '单号',
@@ -429,6 +434,11 @@ const App: React.FC = () => {
             key: 'DOC_NUMBER',
             width: 160,
             render: (text: string) => <span style={{ color: '#2563eb' }}>{text || '-'}</span>,
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_NUMBER || '').toString().trim();
+                const strB = (b.DOC_NUMBER || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
         },
         {
             title: '样品相位',
@@ -436,6 +446,11 @@ const App: React.FC = () => {
             key: 'FD_COL_1MRA3M',
             width: 120,
             render: (text: string) => text || '-',
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.FD_COL_1MRA3M || '').toString().trim();
+                const strB = (b.FD_COL_1MRA3M || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
         },
         {
             title: '样品数量',
@@ -444,6 +459,11 @@ const App: React.FC = () => {
             width: 80,
             align: 'center' as const,
             render: (text: number) => text || '0',
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_NUM || '').toString().trim();
+                const strB = (b.DOC_NUM || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
         },
         {
             title: '测试点数',
@@ -452,6 +472,11 @@ const App: React.FC = () => {
             width: 100,
             align: 'center' as const,
             render: (text: number) => text || '0',
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_PT || '').toString().trim();
+                const strB = (b.DOC_PT || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
         },
         {
             title: '优先级',
@@ -464,6 +489,11 @@ const App: React.FC = () => {
                 const label = map[text] || 'C';
                 return <span className={`priority-badge priority-${label.toLowerCase()}`}>{label}</span>;
             },
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_PRIORITY || '').toString().trim();
+                const strB = (b.DOC_PRIORITY || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
         },
         {
             title: '是否返工',
@@ -475,6 +505,11 @@ const App: React.FC = () => {
                 const isRework = text === '1';
                 return <span className={isRework ? 'tag tag-red' : 'tag tag-green'}>{isRework ? '是' : '否'}</span>;
             },
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_STATE || '').toString().trim();
+                const strB = (b.DOC_STATE || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
         },
         {
             title: '当前站点',
@@ -484,6 +519,11 @@ const App: React.FC = () => {
             render: (text: string) => {
                 const item = statusList.find(item => item.value === text);
                 return item ? item.label : '未知状态';
+            },
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_SITE || '').toString().trim();
+                const strB = (b.DOC_SITE || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
             },
         },
         {
@@ -511,7 +551,12 @@ const App: React.FC = () => {
                     const formattedMinutes = Math.round(totalMinutes * 10) / 10;
                     return `${formattedMinutes}分钟`;
                 }
-            }
+            },
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_NEWSITETIME || '').toString().trim();
+                const strB = (b.DOC_NEWSITETIME || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
         },
         {
             title: '接样时间',
@@ -519,24 +564,35 @@ const App: React.FC = () => {
             key: 'FD_CREATE_TIME',
             width: 160,
             render: (text: string) => text || '-',
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.FD_CREATE_TIME || '').toString().trim();
+                const strB = (b.FD_CREATE_TIME || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
         },
         {
-            title: '项目号 / 对接窗口',
+            title: '项目号',
             dataIndex: 'DOC_PROJECT',
             key: 'DOC_PROJECT',
             width: 180,
-            render: (text: string, record: LimsData) => (
-                <div>
-                    <div style={{ marginBottom: '4px' }}>
-                        <FolderOutlined style={{ color: '#f59e0b', marginRight: '4px' }} />
-                        <span style={{ color: '#7c3aed' }}>{text || '-'}</span>
-                    </div>
-                    <div>
-                        <UserOutlined style={{ color: '#6b7280', marginRight: '4px' }} />
-                        <span>{record.FD_COL_6LIFCJ_NAME || '-'}</span>
-                    </div>
-                </div>
-            ),
+            render: (text: string) => text || '-',
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.DOC_PROJECT || '').toString().trim();
+                const strB = (b.DOC_PROJECT || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
+        },
+        {
+            title: '对接窗口',
+            dataIndex: 'FD_TARGET_NAME',
+            key: 'FD_TARGET_NAME',
+            width: 180,
+            render: (text: string) => text || '-',
+            sorter: (a: LimsData, b: LimsData) => {
+                const strA = (a.FD_TARGET_NAME || '').toString().trim();
+                const strB = (b.FD_TARGET_NAME || '').toString().trim();
+                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+            },
         },
         {
             title: '操作',
@@ -549,7 +605,7 @@ const App: React.FC = () => {
                     <span style={{ color: '#d9d9d9' }}>|</span>
                     <button className="btn-link" onClick={() => window.open(record.FD_URL + record.FD_MAIM_ID, '_blank')}>流程</button>
                 </div>
-            )
+            ),
         },
     ];
 
