@@ -573,6 +573,8 @@ body {
 .tag-blue { background: #cffafe; color: #0891b2; }
 .tag-green { background: #f0fdf4; color: #22c55e; }
 .tag-red { background: #fee2e2; color: #ef4444; }
+.tag-fib { background: #ffedd5; color: #ea580c; font-weight: 600; padding: 4px 10px; border-radius: 6px; }
+.tag-tem { background: #cffafe; color: #0891b2; font-weight: 600; padding: 4px 10px; border-radius: 6px; }
 
 .status-badge {
   display: inline-flex;
@@ -755,6 +757,3 @@ body {
   background: #f9fafb;
 }
 
-.table-section .ant-pagination {
-  display: none;
-}

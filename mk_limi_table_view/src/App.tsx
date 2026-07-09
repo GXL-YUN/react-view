@@ -20,8 +20,11 @@ import PersonnelTagsIndex from "./componce/PersonnelTagsIndex"
 import { OrgSelector, SelectionMode, SelectionType } from '@soutetu0087/org-selector/dist/index.mjs';
 import '@soutetu0087/org-selector/dist/style.css';
 import './App.css';
+import { mockLimsData } from './mockData';
 
-interface LimsData {
+const USE_MOCK_DATA = process.env.NODE_ENV === 'development';
+
+export interface LimsData {
     FD_MAIM_ID: string;
     DOC_STATE: string;
     DOC_NAME: string;
@@ -92,7 +95,14 @@ const App: React.FC = () => {
     const [selectedItemss, setSelectedItemss] = useState<SelectedItem[]>([]);
     const [isHourMode, setIsHourMode] = useState(true);
     const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-
+    const [columnSettingsVisible, setColumnSettingsVisible] = useState(false);
+    const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
+        'index', 'DOC_NAME', 'DOC_NUMBER', 'FD_COL_1MRA3M', 'DOC_NUM',
+        fdType === 'getTemAll' ? 'FD_COL_T9P4F5' : 'DOC_PT',
+        fdType === 'getTemAll' ? 'FD_TEM_COUNT' : '',
+        'DOC_PRIORITY', 'DOC_STATE', 'DOC_SITE', 'DOC_NEWSITETIME',
+        'FD_CREATE_TIME', 'DOC_PROJECT', 'FD_TARGET_NAME', 'action'
+    ]));
     const handleConfirm = (selected: SelectedItem[]) => {
         setSelectedItems(selected);
         const names = selected.map(user => user.id);
@@ -251,6 +261,39 @@ const App: React.FC = () => {
         const query = useQuery();
         const fdType = query.get('fdType');
         setFdType(fdType + "");
+
+        if (USE_MOCK_DATA) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+            let filtered = [...mockLimsData];
+            for (const p of params) {
+                if (p.type === 'like' && p.value) {
+                    filtered = filtered.filter(item => {
+                        const val = (item as any)[p.key];
+                        return val && String(val).includes(String(p.value));
+                    });
+                } else if (p.type === 'in' && Array.isArray(p.value) && p.value.length > 0) {
+                    filtered = filtered.filter(item => {
+                        const val = (item as any)[p.key];
+                        return p.value.includes(String(val));
+                    });
+                } else if (p.type === 'eq') {
+                    filtered = filtered.filter(item => {
+                        const val = (item as any)[p.key];
+                        return String(val) === String(p.value);
+                    });
+                }
+            }
+            const startIdx = (page - 1) * size;
+            const pageData = filtered.slice(startIdx, startIdx + size);
+            setData(pageData);
+            setTotal(filtered.length);
+            setCurrent(page);
+            setPageSize(size);
+            setLocalPageSize(size);
+            setLoading(false);
+            return;
+        }
+
         try {
             const response = await axios.post<ApiResponse>(
                 '/ekp_mkpass/back/lims/LimsTemListController/' + fdType,
@@ -333,38 +376,72 @@ const App: React.FC = () => {
             return;
         }
         try {
+            const columnMap: Record<string, { label: string; getValue: (item: LimsData, idx: number) => any }> = {
+                index: { label: '序号', getValue: (_, idx) => (current - 1) * localPageSize + idx + 1 },
+                DOC_NAME: { label: '文档名称', getValue: (item) => item.DOC_NAME || '' },
+                DOC_NUMBER: { label: '单号', getValue: (item) => item.DOC_NUMBER || '' },
+                FD_COL_1MRA3M: { label: '样品相位', getValue: (item) => item.FD_COL_1MRA3M || '-' },
+                DOC_NUM: { label: '样品数量', getValue: (item) => item.DOC_NUM || '0' },
+                FD_COL_T9P4F5: { label: 'FIB', getValue: (item) => item.FD_COL_T9P4F5 || 0 },
+                FD_TEM_COUNT: { label: 'TEM', getValue: (item) => item.FD_TEM_COUNT || 0 },
+                DOC_PT: { label: '测试点数', getValue: (item) => item.DOC_PT || 0 },
+                DOC_PRIORITY: {
+                    label: '优先级',
+                    getValue: (item) => {
+                        const map: Record<string, string> = { '1': 'A', '2': 'B' };
+                        return map[item.DOC_PRIORITY] || 'C';
+                    }
+                },
+                DOC_STATE: { label: '是否返工', getValue: (item) => item.DOC_STATE === '1' ? '是' : '否' },
+                DOC_SITE: {
+                    label: '当前站点',
+                    getValue: (item) => {
+                        const s = statusList.find(s => s.value === item.DOC_SITE);
+                        return s ? s.label : '未知状态';
+                    }
+                },
+                DOC_NEWSITETIME: {
+                    label: '流入当前站点时长',
+                    getValue: (item) => {
+                        if (!item.DOC_NEWSITETIME) return '-';
+                        const totalMinutes = parseInt(item.DOC_NEWSITETIME, 10);
+                        if (isNaN(totalMinutes)) return '-';
+                        if (isHourMode) {
+                            return `${Math.round(totalMinutes / 60 * 10) / 10}小时`;
+                        } else {
+                            return `${Math.round(totalMinutes * 10) / 10}分钟`;
+                        }
+                    }
+                },
+                FD_CREATE_TIME: { label: '接样时间', getValue: (item) => item.FD_CREATE_TIME || '-' },
+                DOC_PROJECT: { label: '项目号', getValue: (item) => item.DOC_PROJECT || '-' },
+                FD_TARGET_NAME: { label: '对接窗口', getValue: (item) => item.FD_TARGET_NAME || '-' },
+            };
+
+            const exportCols = allColumnOptions
+                .filter(opt => visibleColumns.has(opt.key) && opt.key !== 'action' && columnMap[opt.key])
+                .map(opt => columnMap[opt.key]);
+
             const exportData = data.map((item, index) => {
-                return {
-                    序号: (current - 1) * localPageSize + index + 1,
-                    文档名称: item.DOC_NAME || '',
-                    单号: item.DOC_NUMBER || '',
-                    样品数量: item.DOC_NUM || 0,
-                    测试点数: item.DOC_PT || 0,
-                    优先级: item.DOC_PRIORITY || '',
-                    是否为返工: item.DOC_STATE === '1' ? '是' : item.DOC_STATE === '0' ? '否' : '-',
-                    当前站点: item.DOC_SITE || '',
-                    流入当前站点时长: item.DOC_NEWSITETIME || '',
-                    项目号: item.DOC_PROJECT || '',
-                    时效: item.DOC_AGING || ''
-                };
+                const row: Record<string, any> = {};
+                exportCols.forEach(col => {
+                    row[col.label] = col.getValue(item, index);
+                });
+                return row;
             });
 
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.json_to_sheet(exportData);
 
-            let wscols = [
-                { wch: 8 },
-                { wch: 30 },
-                { wch: 20 },
-                { wch: 10 },
-                { wch: 10 },
-                { wch: 10 },
-                { wch: 10 },
-                { wch: 15 },
-                { wch: 20 },
-                { wch: 15 },
-                { wch: 15 },
-            ];
+            const wscols = exportCols.map((col) => {
+                if (col.label === '序号') return { wch: 8 };
+                if (col.label === '文档名称') return { wch: 30 };
+                if (col.label === '单号') return { wch: 20 };
+                if (col.label === '项目号') return { wch: 40 };
+                if (col.label === '接样时间') return { wch: 20 };
+                if (col.label === '流入当前站点时长') return { wch: 18 };
+                return { wch: 12 };
+            });
             ws['!cols'] = wscols;
 
             XLSX.utils.book_append_sheet(wb, ws, '流程查看列表');
@@ -456,7 +533,7 @@ const App: React.FC = () => {
             title: '样品数量',
             dataIndex: 'DOC_NUM',
             key: 'DOC_NUM',
-            width: 80,
+            width: 30,
             align: 'center' as const,
             render: (text: number) => text || '0',
             sorter: (a: LimsData, b: LimsData) => {
@@ -465,19 +542,58 @@ const App: React.FC = () => {
                 return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
             },
         },
-        {
-            title: '测试点数',
-            dataIndex: 'DOC_PT',
-            key: 'DOC_PT',
-            width: 100,
-            align: 'center' as const,
-            render: (text: number) => text || '0',
-            sorter: (a: LimsData, b: LimsData) => {
-                const strA = (a.DOC_PT || '').toString().trim();
-                const strB = (b.DOC_PT || '').toString().trim();
-                return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+        ...(fdType === 'getTemAll' ? [
+            {
+                title: 'FIB',
+                dataIndex: 'FD_COL_T9P4F5',
+                key: 'FD_COL_T9P4F5',
+                width: 30,
+                align: 'center' as const,
+                render: (text: number) => (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                        <span className="tag tag-fib">FIB</span>
+                        <span style={{ fontWeight: 600, color: '#ea580c' }}>{text || 0}</span>
+                    </div>
+                ),
+                sorter: (a: LimsData, b: LimsData) => {
+                    const numA = a.FD_COL_T9P4F5 || 0;
+                    const numB = b.FD_COL_T9P4F5 || 0;
+                    return numA - numB;
+                },
             },
-        },
+            {
+                title: 'TEM',
+                dataIndex: 'FD_TEM_COUNT',
+                key: 'FD_TEM_COUNT',
+                width: 30,
+                align: 'center' as const,
+                render: (text: number) => (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                        <span className="tag tag-tem">TEM</span>
+                        <span style={{ fontWeight: 600, color: '#0891b2' }}>{text || 0}</span>
+                    </div>
+                ),
+                sorter: (a: LimsData, b: LimsData) => {
+                    const numA = a.FD_TEM_COUNT || 0;
+                    const numB = b.FD_TEM_COUNT || 0;
+                    return numA - numB;
+                },
+            },
+        ] : [
+            {
+                title: '测试点数',
+                dataIndex: 'DOC_PT',
+                key: 'DOC_PT',
+                width: 30,
+                align: 'center' as const,
+                render: (text: number) => text || '0',
+                sorter: (a: LimsData, b: LimsData) => {
+                    const strA = (a.DOC_PT || '').toString().trim();
+                    const strB = (b.DOC_PT || '').toString().trim();
+                    return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
+                },
+            },
+        ]),
         {
             title: '优先级',
             dataIndex: 'DOC_PRIORITY',
@@ -537,7 +653,7 @@ const App: React.FC = () => {
             ),
             dataIndex: 'DOC_NEWSITETIME',
             key: 'DOC_NEWSITETIME',
-            width: 160,
+            width: 120,
             align: 'center' as const,
             render: (text: string) => {
                 if (!text) return '-';
@@ -574,7 +690,7 @@ const App: React.FC = () => {
             title: '项目号',
             dataIndex: 'DOC_PROJECT',
             key: 'DOC_PROJECT',
-            width: 180,
+            width: 450,
             render: (text: string) => text || '-',
             sorter: (a: LimsData, b: LimsData) => {
                 const strA = (a.DOC_PROJECT || '').toString().trim();
@@ -608,6 +724,40 @@ const App: React.FC = () => {
             ),
         },
     ];
+    const allColumnOptions = [
+        { key: 'index', label: '序号' },
+        { key: 'DOC_NAME', label: '文档名称' },
+        { key: 'DOC_NUMBER', label: '单号' },
+        { key: 'FD_COL_1MRA3M', label: '样品相位' },
+        { key: 'DOC_NUM', label: '样品数量' },
+        ...(fdType === 'getTemAll' ? [
+            { key: 'FD_COL_T9P4F5', label: 'FIB' },
+            { key: 'FD_TEM_COUNT', label: 'TEM' }
+        ] : [
+            { key: 'DOC_PT', label: '测试点数' }
+        ]),
+        { key: 'DOC_PRIORITY', label: '优先级' },
+        { key: 'DOC_STATE', label: '是否返工' },
+        { key: 'DOC_SITE', label: '当前站点' },
+        { key: 'DOC_NEWSITETIME', label: '流入当前站点时长' },
+        { key: 'FD_CREATE_TIME', label: '接样时间' },
+        { key: 'DOC_PROJECT', label: '项目号' },
+        { key: 'FD_TARGET_NAME', label: '对接窗口' },
+        { key: 'action', label: '操作' }
+    ];
+
+    const toggleColumn = (columnKey: string) => {
+        const newVisibleColumns = new Set(visibleColumns);
+        if (newVisibleColumns.has(columnKey)) {
+            newVisibleColumns.delete(columnKey);
+        } else {
+            newVisibleColumns.add(columnKey);
+        }
+        setVisibleColumns(newVisibleColumns);
+    };
+
+
+    const filteredColumns = columns.filter((col: any) => visibleColumns.has(col.key || col.dataIndex));
 
     useEffect(() => {
         const useQuery = () => {
@@ -623,7 +773,22 @@ const App: React.FC = () => {
             fetchData();
         }
     }, []);
-
+    useEffect(() => {
+        if (fdType) {
+            const baseColumns = new Set([
+                'index', 'DOC_NAME', 'DOC_NUMBER', 'FD_COL_1MRA3M', 'DOC_NUM',
+                'DOC_PRIORITY', 'DOC_STATE', 'DOC_SITE', 'DOC_NEWSITETIME',
+                'FD_CREATE_TIME', 'DOC_PROJECT', 'FD_TARGET_NAME', 'action'
+            ]);
+            if (fdType === 'getTemAll') {
+                baseColumns.add('FD_COL_T9P4F5');
+                baseColumns.add('FD_TEM_COUNT');
+            } else {
+                baseColumns.add('DOC_PT');
+            }
+            setVisibleColumns(baseColumns);
+        }
+    }, [fdType]);
     const stats = useMemo(() => {
         const pending = data.filter(item =>
             item.DOC_STATE === '10' || item.DOC_STATE === '30'
@@ -651,9 +816,9 @@ const App: React.FC = () => {
                         <ReloadOutlined />
                         刷新
                     </button>
-                    <button className="btn">
+                    <button className="btn" onClick={() => setColumnSettingsVisible(true)}>
                         <SettingOutlined />
-                        列设置
+                        <span style={{ marginLeft: '4px' }}>列设置</span>
                     </button>
                     <button className="btn btn-primary" onClick={handleExport}>
                         <ExportOutlined />
@@ -874,7 +1039,7 @@ const App: React.FC = () => {
                 <div className="table-container">
                     <Table
                         dataSource={data}
-                        columns={columns}
+                        columns={filteredColumns}
                         rowKey="FD_MAIM_ID"
                         loading={loading}
                         onRow={(record) => ({
@@ -897,6 +1062,110 @@ const App: React.FC = () => {
                     />
                 </div>
             </div>
+
+            {/* ==================== 列设置弹窗 ==================== */}
+            {columnSettingsVisible && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    zIndex: 1000,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }} onClick={() => setColumnSettingsVisible(false)}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '8px',
+                        padding: '24px',
+                        minWidth: '400px',
+                        maxWidth: '600px',
+                        maxHeight: '70vh',
+                        overflowY: 'auto',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                    }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '20px',
+                            borderBottom: '1px solid #e5e7eb',
+                            paddingBottom: '12px'
+                        }}>
+                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>列设置</h3>
+                            <button
+                                onClick={() => setColumnSettingsVisible(false)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    fontSize: '20px',
+                                    cursor: 'pointer',
+                                    color: '#999'
+                                }}
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: '12px'
+                        }}>
+                            {allColumnOptions.map(option => (
+                                <label
+                                    key={option.key}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '8px 12px',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        backgroundColor: visibleColumns.has(option.key) ? '#f0f7ff' : 'transparent',
+                                        border: visibleColumns.has(option.key) ? '1px solid #1890ff' : '1px solid transparent'
+                                    }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={visibleColumns.has(option.key)}
+                                        onChange={() => toggleColumn(option.key)}
+                                        style={{
+                                            width: '16px',
+                                            height: '16px',
+                                            cursor: 'pointer'
+                                        }}
+                                    />
+                                    <span style={{ fontSize: '14px', color: '#333' }}>{option.label}</span>
+                                </label>
+                            ))}
+                        </div>
+                        <div style={{
+                            marginTop: '20px',
+                            paddingTop: '16px',
+                            borderTop: '1px solid #e5e7eb',
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            gap: '12px'
+                        }}>
+                            <button
+                                onClick={() => setColumnSettingsVisible(false)}
+                                className="btn"
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={() => setColumnSettingsVisible(false)}
+                                className="btn btn-primary"
+                            >
+                                确定
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ==================== OrgSelector 弹窗 ==================== */}
             <OrgSelector
