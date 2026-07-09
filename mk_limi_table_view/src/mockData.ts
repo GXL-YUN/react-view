@@ -63,6 +63,7 @@ function generateMockData(count: number): LimsData[] {
             DOC_PT: Math.floor(Math.random() * 20) + 1,
             DOC_NUM: String(Math.floor(Math.random() * 10) + 1),
             FD_CREATE_TIME: randomDate(start, end),
+            FD_JIE_TIME: randomDate(start, end),
             DOC_CABINETANDGRID: `柜${Math.floor(Math.random() * 5) + 1}-格${Math.floor(Math.random() * 20) + 1}`,
             DOC_NEWSITETIME: String(Math.floor(Math.random() * 5000) + 10),
             FD_TEM_COUNT: Math.floor(Math.random() * 10) + 1,

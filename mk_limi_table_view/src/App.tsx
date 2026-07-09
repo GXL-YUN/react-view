@@ -51,6 +51,7 @@ export interface LimsData {
     FD_COL_Y4XOXQ?: string;
     DOC_PT?: number;
     FD_CREATE_TIME?: string;
+    FD_JIE_TIME?: string;
     DOC_CABINETANDGRID?: string;
     DOC_NUM?: string;
     DOC_NEWSITETIME?: string;
@@ -96,6 +97,7 @@ const App: React.FC = () => {
     const [isHourMode, setIsHourMode] = useState(true);
     const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
     const [columnSettingsVisible, setColumnSettingsVisible] = useState(false);
+    const [priorityValues, setPriorityValues] = useState<string[]>([]);
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
         'index', 'DOC_NAME', 'DOC_NUMBER', 'FD_COL_1MRA3M', 'DOC_NUM',
         fdType === 'getTemAll' ? 'FD_COL_T9P4F5' : 'DOC_PT',
@@ -354,9 +356,73 @@ const App: React.FC = () => {
         setSelectedItems([]);
         setSelectedItemss([]);
         setSelectedRowKeys([]);
+        setPriorityValues([]);
         setCurrent(1);
         fetchData(1, localPageSize, []);
         message.info('已重置所有筛选条件');
+    };
+    const removeFilter = (filterKey: string) => {
+        const newFilters = filters.filter(item => item.key !== filterKey);
+        setFilters(newFilters);
+        if (filterKey === 'DOC_SITE') {
+            setValues([]);
+        } else if (filterKey === 'fd_col_6lifcj_id') {
+            setSelectedItems([]);
+        } else if (filterKey === 'fd_col_1fitrk_id') {
+            setSelectedItemss([]);
+        }
+        setCurrent(1);
+        fetchData(1, localPageSize, newFilters);
+    };
+
+    const getFilterLabel = (key: string): string => {
+        const labelMap: Record<string, string> = {
+            DOC_NAME: '标题',
+            DOC_NUMBER: '单号',
+            fd_col_8mkygi: '项目号',
+            DOC_PRIORITY: '优先级',
+            FD_DOC_STATUS: '单据状态',
+            DOC_STATE: '是否返工',
+            DOC_SITE: '站点状态',
+            FD_CREATE_TIME: '创建时间',
+            FD_JIE_TIME: '接样时间',
+            fd_col_6lifcj_id: '接样人员',
+            fd_col_1fitrk_id: '委托单位'
+        };
+        return labelMap[key] || key;
+    };
+
+    const getFilterValueDisplay = (filter: FilterState): string => {
+        if (filter.type === 'like') {
+            return String(filter.value);
+        } else if (filter.type === 'in' && Array.isArray(filter.value)) {
+            if (filter.key === 'DOC_SITE') {
+                return filter.value.map(v => {
+                    const opt = processStatusOptions.find(o => o.value === v);
+                    return opt ? opt.label : v;
+                }).join(', ');
+            } else if (filter.key === 'FD_DOC_STATUS') {
+                return filter.value.map(v => {
+                    const opt = FD_DOC_STATUS.find(o => o.value === v);
+                    return opt ? opt.label : v;
+                }).join(', ');
+            } else if (filter.key === 'DOC_STATE') {
+                return filter.value.map(v => {
+                    const opt = fd_lable.find(o => o.value === v);
+                    return opt ? opt.label : v;
+                }).join(', ');
+            } else if (filter.key === 'fd_col_6lifcj_id') {
+                return selectedItems.map(item => item.name).join(', ');
+            } else if (filter.key === 'fd_col_1fitrk_id') {
+                return selectedItemss.map(item => item.name).join(', ');
+            }
+            return filter.value.join(', ');
+        } else if (filter.type === 'betweenTime' && Array.isArray(filter.value)) {
+            return `${filter.value[0]} → ${filter.value[1]}`;
+        } else if (filter.type === 'eq') {
+            return String(filter.value);
+        }
+        return String(filter.value);
     };
 
     const handleTableChange = (pagination: any) => {
@@ -413,7 +479,7 @@ const App: React.FC = () => {
                         }
                     }
                 },
-                FD_CREATE_TIME: { label: '接样时间', getValue: (item) => item.FD_CREATE_TIME || '-' },
+                FD_JIE_TIME: { label: '接样时间', getValue: (item) => item.FD_JIE_TIME || '-' },
                 DOC_PROJECT: { label: '项目号', getValue: (item) => item.DOC_PROJECT || '-' },
                 FD_TARGET_NAME: { label: '对接窗口', getValue: (item) => item.FD_TARGET_NAME || '-' },
             };
@@ -676,13 +742,13 @@ const App: React.FC = () => {
         },
         {
             title: '接样时间',
-            dataIndex: 'FD_CREATE_TIME',
-            key: 'FD_CREATE_TIME',
+            dataIndex: 'FD_JIE_TIME',
+            key: 'FD_JIE_TIME',
             width: 160,
             render: (text: string) => text || '-',
             sorter: (a: LimsData, b: LimsData) => {
-                const strA = (a.FD_CREATE_TIME || '').toString().trim();
-                const strB = (b.FD_CREATE_TIME || '').toString().trim();
+                const strA = (a.FD_JIE_TIME || '').toString().trim();
+                const strB = (b.FD_JIE_TIME || '').toString().trim();
                 return strA.localeCompare(strB, 'zh-CN-u-co-pinyin');
             },
         },
@@ -740,7 +806,7 @@ const App: React.FC = () => {
         { key: 'DOC_STATE', label: '是否返工' },
         { key: 'DOC_SITE', label: '当前站点' },
         { key: 'DOC_NEWSITETIME', label: '流入当前站点时长' },
-        { key: 'FD_CREATE_TIME', label: '接样时间' },
+        { key: 'FD_JIE_TIME', label: '接样时间' },
         { key: 'DOC_PROJECT', label: '项目号' },
         { key: 'FD_TARGET_NAME', label: '对接窗口' },
         { key: 'action', label: '操作' }
@@ -778,7 +844,7 @@ const App: React.FC = () => {
             const baseColumns = new Set([
                 'index', 'DOC_NAME', 'DOC_NUMBER', 'FD_COL_1MRA3M', 'DOC_NUM',
                 'DOC_PRIORITY', 'DOC_STATE', 'DOC_SITE', 'DOC_NEWSITETIME',
-                'FD_CREATE_TIME', 'DOC_PROJECT', 'FD_TARGET_NAME', 'action'
+                'FD_CREATE_TIME','FD_JIE_TIME', 'DOC_PROJECT', 'FD_TARGET_NAME', 'action'
             ]);
             if (fdType === 'getTemAll') {
                 baseColumns.add('FD_COL_T9P4F5');
@@ -866,6 +932,7 @@ const App: React.FC = () => {
                 </div>
             </div>
 
+
             {/* ==================== 筛选面板 ==================== */}
             <div className="filter-section">
                 <div className="filter-header">
@@ -920,14 +987,15 @@ const App: React.FC = () => {
                 <div className="filter-row">
                     <div className="filter-group">
                         <label className="form-label" style={{ paddingTop: '4px' }}>优先级：</label>
-                        <div className="checkbox-group">
-                            {fd_type.map(opt => (
-                                <label key={opt.value} className="checkbox-item">
-                                    <input type="checkbox" />
-                                    <span className={`priority-badge priority-${opt.label.toLowerCase()}`}>{opt.label}</span>
-                                </label>
-                            ))}
-                        </div>
+                        <Checkbox.Group
+                            className="checkbox-group"
+                            options={fd_type.map(opt => ({ label: opt.label, value: opt.value }))}
+                            value={priorityValues}
+                            onChange={(values) => {
+                                setPriorityValues(values as string[]);
+                                handleFilterChange("DOC_PRIORITY", "in", values as string[]);
+                            }}
+                        />
                     </div>
                     <div className="filter-group">
                         <label className="form-label" style={{ paddingTop: '4px' }}>单据状态：</label>
@@ -969,6 +1037,7 @@ const App: React.FC = () => {
                                 <label className="form-label">创建时间：</label>
                                 <div className="date-range">
                                     <RangePicker
+                                        placeholder={['开始日期', '结束日期']}
                                         onChange={(date, dateString) => {
                                             handleFilterChange("FD_CREATE_TIME", "betweenTime", dateString);
                                         }}
@@ -980,8 +1049,9 @@ const App: React.FC = () => {
                                 <label className="form-label">接样时间：</label>
                                 <div className="date-range">
                                     <RangePicker
+                                        placeholder={['开始日期', '结束日期']}
                                         onChange={(date, dateString) => {
-                                            handleFilterChange("FD_CREATE_TIME", "betweenTime", dateString);
+                                            handleFilterChange("FD_JIE_TIME", "betweenTime", dateString);
                                         }}
                                         style={{ width: '100%' }}
                                     />
@@ -1033,7 +1103,30 @@ const App: React.FC = () => {
                     </div>
                 )}
             </div>
-
+            {/* ==================== 已选条件区域 ==================== */}
+            {filters.length > 0 && (
+                <div className="active-filters">
+                    <span className="active-filters-label">已选条件：</span>
+                    <div className="active-filters-list">
+                        {filters.map((filter, index) => (
+                            <span key={index} className="active-filter-tag">
+                                <span className="filter-tag-text">
+                                    {getFilterLabel(filter.key)}: {getFilterValueDisplay(filter)}
+                                </span>
+                                <button
+                                    className="filter-tag-close"
+                                    onClick={() => removeFilter(filter.key)}
+                                >
+                                    ×
+                                </button>
+                            </span>
+                        ))}
+                        <button className="clear-all-btn" onClick={handleReset}>
+                            清空全部
+                        </button>
+                    </div>
+                </div>
+            )}
             {/* ==================== 表格区域 ==================== */}
             <div className="table-section">
                 <div className="table-container">
