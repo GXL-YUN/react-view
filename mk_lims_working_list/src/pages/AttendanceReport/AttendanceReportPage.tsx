@@ -70,7 +70,7 @@ const AttendanceReportPage: React.FC = () => {
         matchedDeptValue: string | null;
         userName: string;
         isInitialized: boolean;
-        isManager: boolean; // 是否为管理者（部长或班组长）
+        isManager: boolean;
     }>({
         userInfo: null,
         departmentList: [],
@@ -266,7 +266,8 @@ const AttendanceReportPage: React.FC = () => {
                     },
                     parem: [
                         { key: 'EMPLOYEE_NAME', type: 'like', value: userName },
-                        { key: 'DEPARTMENT_CODE', type: 'like', value: deptValue },
+                        // ✅ 改为使用 DEPARTMENT_NAME
+                        { key: 'DEPARTMENT_NAME', type: 'like', value: deptValue },
                     ],
                 },
                 {
@@ -359,10 +360,10 @@ const AttendanceReportPage: React.FC = () => {
             // 构建筛选条件
             const filters: any[] = [];
 
-            // 部门筛选
+            // ✅ 部门筛选 - 改为使用 DEPARTMENT_NAME
             if (queryParams.department) {
-                filters.push({ key: 'DEPARTMENT_CODE', type: 'like', value: queryParams.department });
-                console.log('🔍 应用部门筛选:', queryParams.department);
+                filters.push({ key: 'DEPARTMENT_NAME', type: 'like', value: queryParams.department });
+                console.log('🔍 应用部门筛选(名称):', queryParams.department);
             }
 
             // 姓名筛选
@@ -652,8 +653,9 @@ const AttendanceReportPage: React.FC = () => {
         try {
             const filters: any[] = [];
 
+            // ✅ 部门筛选 - 改为使用 DEPARTMENT_NAME
             if (department) {
-                filters.push({ key: 'DEPARTMENT_CODE', type: 'like', value: department });
+                filters.push({ key: 'DEPARTMENT_NAME', type: 'like', value: department });
             }
             if (employeeName) {
                 filters.push({ key: 'EMPLOYEE_NAME', type: 'like', value: employeeName.trim() });

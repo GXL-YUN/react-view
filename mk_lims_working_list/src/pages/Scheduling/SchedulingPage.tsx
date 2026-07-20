@@ -351,7 +351,8 @@ const SchedulingPage: React.FC = () => {
                     },
                     parem: [
                         { key: 'EMPLOYEE_NAME', type: 'like', value: userName },
-                        { key: 'DEPARTMENT_CODE', type: 'like', value: deptValue },
+                        // ✅ 改为使用 DEPARTMENT_NAME
+                        { key: 'DEPARTMENT_NAME', type: 'like', value: deptValue },
                     ],
                 },
                 {
@@ -466,9 +467,10 @@ const SchedulingPage: React.FC = () => {
 
             const filters: any[] = [];
 
+            // ✅ 部门筛选 - 改为使用 DEPARTMENT_NAME
             if (queryParams.department) {
-                filters.push({ key: 'DEPARTMENT_CODE', type: 'like', value: queryParams.department });
-                console.log('🔍 应用部门筛选:', queryParams.department);
+                filters.push({ key: 'DEPARTMENT_NAME', type: 'like', value: queryParams.department });
+                console.log('🔍 应用部门筛选(名称):', queryParams.department);
             }
 
             const trimmedName = queryParams.employeeName?.trim();
@@ -777,8 +779,8 @@ const SchedulingPage: React.FC = () => {
     }, []);
 
     // ============================================================
-// 导出功能（包含所有日期，按日期排序）
-// ============================================================
+    // 导出功能（包含所有日期，按日期排序）
+    // ============================================================
     const handleExport = useCallback(async () => {
         if (totalCount === 0) {
             message.warning('暂无数据可导出');
@@ -792,8 +794,9 @@ const SchedulingPage: React.FC = () => {
             // 构建筛选条件
             const filters: any[] = [];
 
+            // ✅ 部门筛选 - 改为使用 DEPARTMENT_NAME
             if (department) {
-                filters.push({ key: 'DEPARTMENT_CODE', type: 'like', value: department });
+                filters.push({ key: 'DEPARTMENT_NAME', type: 'like', value: department });
             }
             if (employeeName) {
                 filters.push({ key: 'EMPLOYEE_NAME', type: 'like', value: employeeName.trim() });
@@ -929,6 +932,7 @@ const SchedulingPage: React.FC = () => {
             setLoading(false);
         }
     }, [department, employeeName, team, monthRange, totalCount]);
+
     // ============================================================
     // 生成日期列
     // ============================================================
