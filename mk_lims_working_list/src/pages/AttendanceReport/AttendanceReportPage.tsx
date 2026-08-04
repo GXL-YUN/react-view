@@ -331,14 +331,14 @@ const AttendanceReportPage: React.FC = () => {
         }
 
         // 取消正在进行的请求
-        if (isFetchingRef.current) {
-            console.log('⏹️ 取消正在进行的请求');
-            if (abortControllerRef.current) {
-                abortControllerRef.current.abort();
-            }
-            isFetchingRef.current = false;
-            await new Promise(resolve => setTimeout(resolve, 50));
-        }
+        // if (isFetchingRef.current) {
+        //     console.log('⏹️ 取消正在进行的请求');
+        //     if (abortControllerRef.current) {
+        //         abortControllerRef.current.abort();
+        //     }
+        //     isFetchingRef.current = false;
+        //     await new Promise(resolve => setTimeout(resolve, 50));
+        // }
 
         const queryParams = params || buildQueryParams();
         console.log('📡 最终查询参数:', queryParams);

@@ -427,14 +427,14 @@ const SchedulingPage: React.FC = () => {
             return;
         }
 
-        if (isQueryingRef.current) {
-            console.log('⏹️ 取消正在进行的请求');
-            if (abortControllerRef.current) {
-                abortControllerRef.current.abort();
-            }
-            isQueryingRef.current = false;
-            await new Promise(resolve => setTimeout(resolve, 50));
-        }
+        // if (isQueryingRef.current) {
+        //     console.log('⏹️ 取消正在进行的请求');
+        //     if (abortControllerRef.current) {
+        //         abortControllerRef.current.abort();
+        //     }
+        //     isQueryingRef.current = false;
+        //     await new Promise(resolve => setTimeout(resolve, 50));
+        // }
 
         const queryParams = params || buildQueryParams();
 
@@ -752,24 +752,75 @@ const SchedulingPage: React.FC = () => {
     // ============================================================
     // 处理分页变化
     // ============================================================
+    // const handlePageChange = useCallback((page: number, size: number) => {
+    //     console.log('📄 分页变化:', { page, size });
+    //
+    //     if (size !== pageSize) {
+    //         setPageSize(size);
+    //         setCurrentPage(1);
+    //         setTimeout(() => {
+    //             const params = buildQueryParams({ page: 1, pageSize: size });
+    //             fetchScheduleData(params);
+    //         }, 100);
+    //     } else if (page !== currentPage) {
+    //         setCurrentPage(page);
+    //         setTimeout(() => {
+    //             const params = buildQueryParams({ page });
+    //             fetchScheduleData(params);
+    //         }, 100);
+    //     }
+    // }, [pageSize, currentPage, fetchScheduleData, buildQueryParams]);
+
+    // ============================================================
+// 处理分页变化 - 修复版本
+// ============================================================
     const handlePageChange = useCallback((page: number, size: number) => {
         console.log('📄 分页变化:', { page, size });
 
-        if (size !== pageSize) {
-            setPageSize(size);
+        // 判断是改变了页数还是每页条数
+        const isPageSizeChanged = size !== pageSize;
+        const targetPage = isPageSizeChanged ? 1 : page;
+        const targetSize = size;
+
+        // 更新状态
+        if (isPageSizeChanged) {
+            setPageSize(targetSize);
             setCurrentPage(1);
-            setTimeout(() => {
-                const params = buildQueryParams({ page: 1, pageSize: size });
-                fetchScheduleData(params);
-            }, 100);
         } else if (page !== currentPage) {
-            setCurrentPage(page);
-            setTimeout(() => {
-                const params = buildQueryParams({ page });
-                fetchScheduleData(params);
-            }, 100);
+            setCurrentPage(targetPage);
         }
-    }, [pageSize, currentPage, fetchScheduleData, buildQueryParams]);
+
+        // 取消正在进行的请求
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            isQueryingRef.current = false;
+        }
+
+        // 构建查询参数 - 直接使用最新值
+        const params: QueryParams = {
+            monthRange: monthRange,
+            department: department,
+            employeeName: employeeName,
+            team: team,
+            page: targetPage,
+            pageSize: targetSize,
+        };
+
+        console.log('📡 分页变化，执行查询:', params);
+
+        // 延迟执行，确保状态更新完成（但使用直接传入的值）
+        setTimeout(() => {
+            fetchScheduleData(params);
+        }, 50);
+    }, [
+        pageSize,
+        currentPage,
+        monthRange,
+        department,
+        employeeName,
+        team,
+        fetchScheduleData
+    ]);
 
     // ============================================================
     // 禁用未来月份
