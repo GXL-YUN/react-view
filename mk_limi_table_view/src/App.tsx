@@ -74,35 +74,74 @@ type StatusItem = {
     key: string;
 };
 
+// ==================== URL 工具函数 ====================
+const updateUrlParams = (params: Record<string, string>) => {
+    const url = new URL(window.location.href);
+    Object.entries(params).forEach(([key, value]) => {
+        if (value && value !== '') {
+            url.searchParams.set(key, value);
+        } else {
+            url.searchParams.delete(key);
+        }
+    });
+    window.history.replaceState({}, '', url.toString());
+};
+
+const getUrlParams = () => {
+    const query = new URLSearchParams(window.location.search);
+    return {
+        fdType: query.get('fdType') || '',
+        docSite: query.get('doc_site') || '',
+    };
+};
+
+// ==================== 统一解析站点值 ====================
+const parseSiteValues = (docSite: string): string[] => {
+    if (!docSite) return [];
+    return docSite.split(/[;,]/)
+        .map(v => v.trim())
+        .filter(v => v !== '');
+};
+
 const App: React.FC = () => {
     // ==================== 状态定义 ====================
     const [allData, setAllData] = useState<LimsData[]>([]);
     const [loading, setLoading] = useState(false);
     const [hasLoadedData, setHasLoadedData] = useState(false);
-    const fetchCalledRef = useRef(false);
 
-    // 筛选状态 - 使用单一数据源
+    // 筛选状态
     const [filters, setFilters] = useState<FilterState[]>([]);
+    const [prevSiteValues, setPrevSiteValues] = useState<string[]>([]);
+
+    // 使用 ref 跟踪筛选变化，防止无限循环
+    const filtersHashRef = useRef<string>('');
+    const isFetchingRef = useRef<boolean>(false);
+    const initialLoadDoneRef = useRef<boolean>(false);
+    const prevNonSiteHashRef = useRef<string>(''); // ✅ 移到组件顶层
 
     // 派生状态：从 filters 中提取各个筛选条件的值
     const values = useMemo(() => {
         const filter = filters.find(f => f.key === 'DOC_SITE');
-        return filter?.value || [];
+        const rawValue = filter?.value || [];
+        return Array.isArray(rawValue) ? rawValue.map(v => String(v)) : [];
     }, [filters]);
 
     const priorityValues = useMemo(() => {
         const filter = filters.find(f => f.key === 'DOC_PRIORITY');
-        return filter?.value || [];
+        const rawValue = filter?.value || [];
+        return Array.isArray(rawValue) ? rawValue.map(v => String(v)) : [];
     }, [filters]);
 
     const reworkValues = useMemo(() => {
         const filter = filters.find(f => f.key === 'DOC_STATE');
-        return filter?.value || [];
+        const rawValue = filter?.value || [];
+        return Array.isArray(rawValue) ? rawValue.map(v => String(v)) : [];
     }, [filters]);
 
     const docStatusValues = useMemo(() => {
         const filter = filters.find(f => f.key === 'FD_DOC_STATUS');
-        return filter?.value || [];
+        const rawValue = filter?.value || [];
+        return Array.isArray(rawValue) ? rawValue.map(v => String(v)) : [];
     }, [filters]);
 
     // 其他状态
@@ -135,7 +174,7 @@ const App: React.FC = () => {
 
     const autoRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const idleCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const isFirstLoadRef = useRef(true);
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // ==================== 标题映射 ====================
     const getPageTitle = useCallback(() => {
@@ -196,7 +235,7 @@ const App: React.FC = () => {
         { label: '前处理', value: '2', key: "getSimsAll" },
         { label: '测试', value: '3', key: "getSimsAll" },
         { label: '待测试', value: '11', key: "getSimsAll" },
-        { label: '待数据处理', value: '11', key: "getSimsAll" },
+        { label: '待数据处理', value: '12', key: "getSimsAll" },
         { label: '数据处理', value: '4', key: "getSimsAll" },
         { label: '测试负责人', value: '5', key: "getSimsAll" },
         { label: '委外中', value: '66', key: "getSimsAll" },
@@ -213,7 +252,6 @@ const App: React.FC = () => {
         { label: '前处理', value: '2', key: "getXpsAll" },
     ];
 
-    // 根据 fdType 获取对应的状态列表（用于表格显示和筛选）
     const getStatusListByFdType = useCallback((fdType: string): StatusItem[] => {
         const filtered = processStatusOptions.filter(item => item.key === fdType);
         const statusMap = new Map<string, string>();
@@ -229,16 +267,9 @@ const App: React.FC = () => {
         }));
     }, []);
 
-    // 获取当前 fdType 的状态列表
     const currentStatusList = useMemo(() => {
         return getStatusListByFdType(fdType);
     }, [fdType, getStatusListByFdType]);
-
-    // 获取站点标签（用于筛选面板显示）
-    const getSiteLabel = useCallback((value: string): string => {
-        const item = processStatusOptions.find(opt => opt.value === value && opt.key === fdType);
-        return item ? item.label : value;
-    }, [fdType]);
 
     const fd_type = [
         { label: 'A', value: '2' },
@@ -272,112 +303,82 @@ const App: React.FC = () => {
         return [];
     }, [fdType]);
 
-    // ==================== 数据获取 ====================
-    const fetchData = useCallback(async () => {
-        if (fetchCalledRef.current && !USE_MOCK_DATA) {
+    // ==================== 核心数据获取函数 ====================
+    const fetchData = useCallback(async (fdTypeParam?: string, docSiteParam?: string | null, forceRefresh: boolean = false) => {
+        // 防止并发请求
+        if (isFetchingRef.current) {
+            console.log('⏳ 请求进行中，跳过重复请求');
             return;
         }
-        fetchCalledRef.current = true;
 
-        const query = new URLSearchParams(window.location.search);
-        const fdTypeFromUrl = query.get('fdType');
-        const fdDateFromUrl = query.get('doc_site');
+        // 获取 URL 参数
+        const { fdType: fdTypeFromUrl, docSite: docSiteFromUrl } = getUrlParams();
+        const currentFdType = fdTypeParam || fdTypeFromUrl || fdType;
 
-        if (fdTypeFromUrl) {
-            setFdType(fdTypeFromUrl);
+        if (!currentFdType) {
+            console.warn('⚠️ 缺少 fdType 参数，无法请求数据');
+            return;
         }
 
+        // 构建请求参数（过滤掉 DOC_SITE，因为它是独立参数）
+        const requestFilters = filters.filter(f => f.key !== 'DOC_SITE');
+
+        // 优先使用传入的 docSiteParam
+        let docSite = docSiteParam;
+        if (docSite === undefined) {
+            docSite = docSiteFromUrl || null;
+        }
+
+        console.log('📡 fetchData 参数:', {
+            fdTypeParam,
+            docSiteParam,
+            finalDocSite: docSite,
+            forceRefresh,
+            requestFilters
+        });
+
+        // 生成请求唯一标识
+        const requestHash = JSON.stringify({
+            fdType: currentFdType,
+            docSite,
+            filters: requestFilters
+        });
+
+        // 如果不是强制刷新，且请求参数未变化，则跳过
+        if (!forceRefresh && requestHash === filtersHashRef.current) {
+            console.log('🔄 请求参数未变化，跳过重复请求');
+            return;
+        }
+
+        isFetchingRef.current = true;
         setLoading(true);
-        try {
-            let initialFilters: FilterState[] = [];
-            if (fdDateFromUrl && fdDateFromUrl !== "") {
-                const arr = fdDateFromUrl.split(";");
-                initialFilters = [{ key: "DOC_SITE", value: arr, type: "in" }];
-                setFilters(initialFilters);
-            }
 
+        try {
             if (USE_MOCK_DATA) {
                 await new Promise(resolve => setTimeout(resolve, 300));
                 let filtered = [...mockLimsData];
-                for (const p of initialFilters) {
-                    if (p.type === 'in' && Array.isArray(p.value) && p.value.length > 0) {
-                        filtered = filtered.filter(item => {
-                            const val = (item as any)[p.key];
-                            return p.value.includes(String(val));
-                        });
+
+                // 模拟站点筛选
+                if (docSite) {
+                    const siteValues = parseSiteValues(docSite);
+                    if (siteValues.length > 0) {
+                        filtered = filtered.filter(item =>
+                            siteValues.some(v => String(v) === String(item.DOC_SITE))
+                        );
                     }
                 }
-                setAllData(filtered);
-            } else {
-                const response = await axios.post<ApiResponse>(
-                    '/ekp_mkpass/back/lims/LimsTemListController/' + fdTypeFromUrl,
-                    {
-                        size: 999999,
-                        current: 0,
-                        parem: initialFilters,
-                    }
-                );
 
-                if (response.data.status === 0) {
-                    const allRecords = response.data.data.list || [];
-                    setAllData(allRecords);
-                } else {
-                    message.error('获取数据失败: ' + response.data.msg);
-                }
-            }
-            setHasLoadedData(true);
-            setNeedsRefreshOnActive(false);
-            if (isFirstLoadRef.current) {
-                isFirstLoadRef.current = false;
-                message.success('数据加载完成');
-            }
-        } catch (error) {
-            console.error('Error fetching data:', error);
-            message.error('网络请求失败');
-        } finally {
-            setLoading(false);
-            fetchCalledRef.current = false;
-        }
-    }, []);
-
-    // ==================== 静默刷新 ====================
-    const silentRefresh = useCallback(async () => {
-        if (!isUserActive || !isPageVisible) {
-            if (!isUserActive) {
-                setNeedsRefreshOnActive(true);
-                console.log('⏸️ 用户空闲中，标记需要刷新，等待恢复活动');
-            } else if (!isPageVisible) {
-                console.log('👁️ 页面不可见（光标不在当前页面），跳过刷新');
-            }
-            return;
-        }
-
-        const query = new URLSearchParams(window.location.search);
-        const fdTypeFromUrl = query.get('fdType');
-
-        if (!fdTypeFromUrl) return;
-
-        try {
-            let currentFilters = filters.filter(f => f.key !== 'DOC_SITE');
-            const requestFilters = [...currentFilters];
-
-            if (values.length > 0) {
-                requestFilters.push({ key: "DOC_SITE", value: values, type: "in" });
-            }
-
-            if (USE_MOCK_DATA) {
-                await new Promise(resolve => setTimeout(resolve, 300));
-                let filtered = [...mockLimsData];
+                // 其他筛选条件
                 for (const p of requestFilters) {
-                    if (p.type === 'in' && Array.isArray(p.value) && p.value.length > 0) {
-                        filtered = filtered.filter(item => {
-                            const val = (item as any)[p.key];
-                            return p.value.includes(String(val));
-                        });
-                    } else if (p.type === 'like' && p.value) {
+                    if (p.type === 'like' && p.value) {
                         filtered = filtered.filter(item => {
                             const val = (item as any)[p.key];
                             return val && String(val).toLowerCase().includes(String(p.value).toLowerCase());
+                        });
+                    } else if (p.type === 'in' && Array.isArray(p.value) && p.value.length > 0) {
+                        filtered = filtered.filter(item => {
+                            const val = (item as any)[p.key];
+                            return p.value.some(v => String(v) === String(val));
                         });
                     } else if (p.type === 'eq' && p.value) {
                         filtered = filtered.filter(item => {
@@ -386,29 +387,140 @@ const App: React.FC = () => {
                         });
                     } else if (p.type === 'betweenTime' && Array.isArray(p.value)) {
                         const [start, end] = p.value;
-                        filtered = filtered.filter(item => {
-                            const val = (item as any)[p.key];
-                            if (!val) return false;
-                            return val >= start && val <= end;
-                        });
+                        if (start && end) {
+                            filtered = filtered.filter(item => {
+                                const val = (item as any)[p.key];
+                                if (!val) return false;
+                                return val >= start && val <= end;
+                            });
+                        }
                     }
                 }
                 setAllData(filtered);
+                setHasLoadedData(true);
             } else {
+                // 真实接口请求
                 const response = await axios.post<ApiResponse>(
-                    '/ekp_mkpass/back/lims/LimsTemListController/' + fdTypeFromUrl,
+                    `/ekp_mkpass/back/lims/LimsTemListController/${currentFdType}`,
                     {
                         size: 999999,
                         current: 0,
                         parem: requestFilters,
+                        doc_site: docSite || ''
                     }
                 );
 
                 if (response.data.status === 0) {
                     const allRecords = response.data.data.list || [];
+                    console.log('📊 接口返回数据量:', allRecords.length, '站点参数:', docSite);
                     setAllData(allRecords);
+                    setHasLoadedData(true);
+                } else {
+                    message.error('获取数据失败: ' + response.data.msg);
                 }
             }
+
+            // 更新请求哈希
+            filtersHashRef.current = requestHash;
+            setNeedsRefreshOnActive(false);
+
+            if (!initialLoadDoneRef.current) {
+                initialLoadDoneRef.current = true;
+                message.success('数据加载完成');
+            }
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            message.error('网络请求失败');
+        } finally {
+            setLoading(false);
+            isFetchingRef.current = false;
+        }
+    }, [filters, USE_MOCK_DATA, fdType]);
+
+    // ==================== 带防抖的数据获取（非站点筛选） ====================
+    const debouncedFetchData = useCallback((fdTypeParam?: string, docSiteParam?: string | null) => {
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+        }
+        debounceTimerRef.current = setTimeout(() => {
+            fetchData(fdTypeParam, docSiteParam);
+        }, 300);
+    }, [fetchData]);
+
+    // ==================== 静默刷新 ====================
+    const silentRefresh = useCallback(async () => {
+        if (!isUserActive || !isPageVisible) {
+            if (!isUserActive) {
+                setNeedsRefreshOnActive(true);
+                console.log('⏸️ 用户空闲中，标记需要刷新');
+            }
+            return;
+        }
+
+        const { fdType: fdTypeFromUrl, docSite: docSiteFromUrl } = getUrlParams();
+        if (!fdTypeFromUrl) return;
+
+        try {
+            const requestFilters = filters.filter(f => f.key !== 'DOC_SITE');
+            const docSite = docSiteFromUrl || null;
+
+            if (USE_MOCK_DATA) {
+                await new Promise(resolve => setTimeout(resolve, 300));
+                let filtered = [...mockLimsData];
+
+                if (docSite) {
+                    const siteValues = parseSiteValues(docSite);
+                    if (siteValues.length > 0) {
+                        filtered = filtered.filter(item =>
+                            siteValues.some(v => String(v) === String(item.DOC_SITE))
+                        );
+                    }
+                }
+
+                for (const p of requestFilters) {
+                    if (p.type === 'like' && p.value) {
+                        filtered = filtered.filter(item => {
+                            const val = (item as any)[p.key];
+                            return val && String(val).toLowerCase().includes(String(p.value).toLowerCase());
+                        });
+                    } else if (p.type === 'in' && Array.isArray(p.value) && p.value.length > 0) {
+                        filtered = filtered.filter(item => {
+                            const val = (item as any)[p.key];
+                            return p.value.some(v => String(v) === String(val));
+                        });
+                    } else if (p.type === 'eq' && p.value) {
+                        filtered = filtered.filter(item => {
+                            const val = (item as any)[p.key];
+                            return String(val) === String(p.value);
+                        });
+                    } else if (p.type === 'betweenTime' && Array.isArray(p.value)) {
+                        const [start, end] = p.value;
+                        if (start && end) {
+                            filtered = filtered.filter(item => {
+                                const val = (item as any)[p.key];
+                                if (!val) return false;
+                                return val >= start && val <= end;
+                            });
+                        }
+                    }
+                }
+                setAllData(filtered);
+            } else {
+                const response = await axios.post<ApiResponse>(
+                    `/ekp_mkpass/back/lims/LimsTemListController/${fdTypeFromUrl}`,
+                    {
+                        size: 999999,
+                        current: 0,
+                        parem: requestFilters,
+                        doc_site: docSite || ''
+                    }
+                );
+
+                if (response.data.status === 0) {
+                    setAllData(response.data.data.list || []);
+                }
+            }
+
             setHasLoadedData(true);
             setAutoRefreshCount(prev => prev + 1);
             setNeedsRefreshOnActive(false);
@@ -416,7 +528,7 @@ const App: React.FC = () => {
         } catch (error) {
             console.error('Silent refresh error:', error);
         }
-    }, [filters, values, USE_MOCK_DATA, isUserActive, isPageVisible]);
+    }, [filters, USE_MOCK_DATA, isUserActive, isPageVisible]);
 
     // ==================== 鼠标活动检测 ====================
     const updateActivity = useCallback(() => {
@@ -426,7 +538,7 @@ const App: React.FC = () => {
 
         if (!isUserActive) {
             setIsUserActive(true);
-            console.log('🟢 用户恢复活动（鼠标移动）');
+            console.log('🟢 用户恢复活动');
 
             if (needsRefreshOnActive && hasLoadedData && isPageVisible) {
                 console.log('🔄 空闲期间有数据更新，执行刷新');
@@ -445,14 +557,12 @@ const App: React.FC = () => {
             setIsPageVisible(visible);
 
             if (visible) {
-                console.log('👁️ 页面变为可见（光标回到当前页面）');
+                console.log('👁️ 页面变为可见');
                 if (needsRefreshOnActive && isUserActive && hasLoadedData) {
                     console.log('🔄 页面恢复可见，执行刷新');
                     message.info('🔄 页面恢复，刷新数据');
                     silentRefresh();
                 }
-            } else {
-                console.log('👁️ 页面变为不可见（光标离开当前页面）');
             }
         };
 
@@ -492,7 +602,7 @@ const App: React.FC = () => {
 
         autoRefreshIntervalRef.current = setInterval(() => {
             if (isUserActive && isPageVisible && hasLoadedData) {
-                console.log('🔄 定时刷新触发（用户活跃 + 页面可见）');
+                console.log('🔄 定时刷新触发');
                 silentRefresh();
             } else {
                 if (!isUserActive) {
@@ -500,8 +610,6 @@ const App: React.FC = () => {
                     setNeedsRefreshOnActive(true);
                 } else if (!isPageVisible) {
                     console.log('👁️ 跳过刷新：页面不可见');
-                } else if (!hasLoadedData) {
-                    console.log('⏳ 跳过刷新：数据未加载');
                 }
             }
         }, 60 * 1000);
@@ -515,6 +623,9 @@ const App: React.FC = () => {
             }
             if (autoRefreshIntervalRef.current) {
                 clearInterval(autoRefreshIntervalRef.current);
+            }
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
             }
         };
     }, [updateActivity, silentRefresh, hasLoadedData, isUserActive, isPageVisible, lastActivityTime]);
@@ -535,7 +646,7 @@ const App: React.FC = () => {
             } else if (p.type === 'in' && Array.isArray(p.value) && p.value.length > 0) {
                 processed = processed.filter(item => {
                     const val = (item as any)[p.key];
-                    return p.value.includes(String(val));
+                    return p.value.some(v => String(v) === String(val));
                 });
             } else if (p.type === 'eq' && p.value !== undefined && p.value !== null && p.value !== '') {
                 processed = processed.filter(item => {
@@ -582,113 +693,143 @@ const App: React.FC = () => {
     const paginatedData = useMemo(() => {
         const startIdx = (current - 1) * pageSize;
         const data = filteredAndSortedData.slice(startIdx, startIdx + pageSize);
-
-        // ==================== 📊 调试日志 ====================
-        console.log('📊 ========== 分页数据计算 ==========');
-        console.log('  📌 原始数据总量:', allData.length);
-        console.log('  🔍 筛选条件数量:', filters.length);
-        console.log('  📋 筛选后数据量:', filteredAndSortedData.length);
-        console.log('  📄 当前页码:', current);
-        console.log('  📏 每页条数:', pageSize);
-        console.log('  📍 起始索引:', startIdx);
-        console.log('  📊 分页数据量:', data.length);
-        console.log('  🔑 筛选条件详情:', filters.map(f => ({
-            key: f.key,
-            type: f.type,
-            value: f.value,
-            valueLength: Array.isArray(f.value) ? f.value.length : 'N/A'
-        })));
-
-        // 检查是否有异常数据
-        if (data.length > pageSize) {
-            console.warn('⚠️ 警告：分页数据量超过每页条数！', {
-                dataLength: data.length,
-                pageSize: pageSize,
-                expectedMax: pageSize
-            });
-        }
-
-        if (filteredAndSortedData.length > 0 && data.length === 0 && current > 1) {
-            console.warn('⚠️ 当前页无数据，但总数据量不为0', {
-                total: filteredAndSortedData.length,
-                current,
-                pageSize
-            });
-        }
-        console.log('📊 ====================================\n');
-
         return data;
-    }, [filteredAndSortedData, current, pageSize, allData.length, filters.length]);
+    }, [filteredAndSortedData, current, pageSize]);
 
     // ==================== 筛选处理函数 ====================
     const handleFilterChange = useCallback((filterName: string, type: string, checkedValues: any) => {
-        console.log('🔧 ========== 筛选条件变化 ==========');
-        console.log('  🏷️ 筛选字段:', filterName);
-        console.log('  📝 筛选类型:', type);
-        console.log('  📦 筛选值:', checkedValues);
+        console.log('🔧 筛选条件变化:', { filterName, type, checkedValues });
 
-        // 处理空值：移除筛选条件
+        // 移除空值筛选
         if (checkedValues === null || checkedValues === undefined ||
             (Array.isArray(checkedValues) && checkedValues.length === 0) ||
             checkedValues === '') {
-            console.log('  🗑️ 移除筛选条件:', filterName);
-            setFilters(prev => {
-                const newFilters = prev.filter(item => item.key !== filterName);
-                console.log('  ✅ 移除后筛选列表:', newFilters);
-                return newFilters;
-            });
+            setFilters(prev => prev.filter(item => item.key !== filterName));
             setCurrent(1);
-            console.log('  🔄 重置到第1页');
-            console.log('🔧 ====================================\n');
             return;
         }
 
-        // 更新筛选条件（替换或新增）
+        // 更新筛选条件
         setFilters(prev => {
             const otherFilters = prev.filter(item => item.key !== filterName);
-            const newFilters = [...otherFilters, { key: filterName, value: checkedValues, type: type }];
-            console.log('  ✅ 更新后筛选列表:', newFilters);
-            return newFilters;
+            return [...otherFilters, { key: filterName, value: checkedValues, type: type }];
         });
         setCurrent(1);
-        console.log('  🔄 重置到第1页');
-        console.log('🔧 ====================================\n');
     }, []);
 
+    // ==================== 站点筛选专用处理函数 ====================
+    const handleSiteFilterChange = useCallback((checkedValues: string[]) => {
+        // 确保值都是字符串类型
+        const normalizedValues = checkedValues.map(v => String(v));
+
+        console.log('🏷️ 站点筛选变化:', {
+            prev: prevSiteValues,
+            current: normalizedValues
+        });
+
+        // 1. 更新 URL
+        if (normalizedValues.length === 0) {
+            updateUrlParams({ doc_site: '' });
+        } else {
+            updateUrlParams({ doc_site: normalizedValues.join(';') });
+        }
+
+        // 2. 更新 prevSiteValues
+        setPrevSiteValues(normalizedValues);
+
+        // 3. 更新 filters（用于 UI 显示）
+        setFilters(prev => {
+            const otherFilters = prev.filter(item => item.key !== 'DOC_SITE');
+            if (normalizedValues.length === 0) {
+                return otherFilters;
+            }
+            return [...otherFilters, {
+                key: 'DOC_SITE',
+                value: normalizedValues,
+                type: 'in'
+            }];
+        });
+
+        // 4. 重置页码
+        setCurrent(1);
+
+        // 5. 无论增加还是减少，都调用后端接口
+        const docSite = normalizedValues.length > 0 ? normalizedValues.join(';') : null;
+        console.log('📡 站点筛选变化，调用后端接口:', { docSite, normalizedValues });
+
+        // 直接调用 fetchData，传入最新的站点值，强制刷新
+        fetchData(undefined, docSite, true);
+    }, [prevSiteValues, fetchData]);
+
+    // ==================== 监听非站点筛选变化自动请求数据 ====================
+    useEffect(() => {
+        // 跳过初始加载
+        if (!initialLoadDoneRef.current) return;
+
+        // 获取当前站点参数
+        const siteFilter = filters.find(f => f.key === 'DOC_SITE');
+        const docSite = siteFilter?.value?.length > 0
+            ? siteFilter.value.join(';')
+            : null;
+
+        // 检查是否有非站点筛选变化
+        const nonSiteFilters = filters.filter(f => f.key !== 'DOC_SITE');
+        const nonSiteHash = JSON.stringify(nonSiteFilters);
+
+        // 如果非站点筛选没有变化，则不请求
+        if (nonSiteHash === prevNonSiteHashRef.current) {
+            return;
+        }
+        prevNonSiteHashRef.current = nonSiteHash;
+
+        console.log('🔄 非站点筛选变化，触发数据请求');
+        debouncedFetchData(undefined, docSite);
+    }, [filters, debouncedFetchData]);
+
+    // ==================== 重置筛选 ====================
     const handleReset = useCallback(() => {
-        console.log('🔄 ========== 重置所有筛选 ==========');
+        console.log('🔄 重置所有筛选');
         setFilters([]);
         setSelectedItems([]);
         setSelectedItemss([]);
-        setMultiSort([]);
+        setMultiSort([{ key: 'DOC_NEWSITETIME', direction: 'desc' }]);
+        setPrevSiteValues([]);
         setCurrent(1);
         setPageSize(10);
-        console.log('  ✅ 已重置所有筛选条件');
-        console.log('  📄 当前页码: 1');
-        console.log('  📏 每页条数: 10');
-        console.log('🔄 ====================================\n');
-        message.info('已重置所有筛选条件');
-    }, []);
+        updateUrlParams({ doc_site: '' });
 
-    const handleRefresh = useCallback(() => {
-        fetchCalledRef.current = false;
-        fetchData();
-        message.info('已刷新数据');
+        // 强制刷新数据
+        fetchData(undefined, null, true);
+        message.info('已重置所有筛选条件');
     }, [fetchData]);
 
-    const removeFilter = useCallback((filterKey: string) => {
-        console.log('🗑️ ========== 移除单个筛选 ==========');
-        console.log('  🏷️ 移除字段:', filterKey);
-        setFilters(prev => {
-            const newFilters = prev.filter(item => item.key !== filterKey);
-            console.log('  ✅ 移除后筛选列表:', newFilters);
-            return newFilters;
-        });
-        setCurrent(1);
-        console.log('  🔄 重置到第1页');
-        console.log('🗑️ ====================================\n');
-    }, []);
+    // ==================== 手动刷新 ====================
+    const handleRefresh = useCallback(() => {
+        const siteFilter = filters.find(f => f.key === 'DOC_SITE');
+        const docSite = siteFilter?.value?.length > 0
+            ? siteFilter.value.join(';')
+            : null;
 
+        fetchData(undefined, docSite, true);
+        message.info('已刷新数据');
+    }, [filters, fetchData]);
+
+    // ==================== 移除单个筛选 ====================
+    const removeFilter = useCallback((filterKey: string) => {
+        console.log('🗑️ 移除筛选:', filterKey);
+
+        if (filterKey === 'DOC_SITE') {
+            updateUrlParams({ doc_site: '' });
+            setPrevSiteValues([]);
+            // 移除站点筛选后调用后端
+            fetchData(undefined, null, true);
+        } else {
+            setFilters(prev => prev.filter(item => item.key !== filterKey));
+            setCurrent(1);
+        }
+    }, [fetchData]);
+
+    // ==================== 获取筛选显示标签 ====================
     const getFilterLabel = useCallback((key: string): string => {
         const labelMap: Record<string, string> = {
             DOC_NAME: '标题',
@@ -744,13 +885,8 @@ const App: React.FC = () => {
 
     // ==================== 表格变化处理 ====================
     const handleTableChange = useCallback((pagination: any, _filters: any, sorter: any) => {
-        console.log('📋 ========== 表格变化 ==========');
-        console.log('  📄 分页变化:', pagination);
-        console.log('  🔄 排序变化:', sorter);
-
         let newSort: { key: string; direction: 'asc' | 'desc' }[] = [];
 
-        // ✅ 单列排序：直接替换
         if (sorter && sorter.columnKey) {
             const columnKey = sorter.columnKey as string;
             if (sorter.order === 'ascend') {
@@ -758,28 +894,20 @@ const App: React.FC = () => {
             } else if (sorter.order === 'descend') {
                 newSort = [{ key: columnKey, direction: 'desc' as const }];
             }
-            // 如果 sorter.order 为空（取消排序），newSort 保持为空数组
         }
 
-        // ✅ 如果没有排序，恢复默认排序（按流入当前站点时长倒序）
         if (newSort.length === 0) {
             newSort = [{ key: 'DOC_NEWSITETIME', direction: 'desc' as const }];
         }
 
         setMultiSort(newSort);
-        console.log('  ✅ 更新排序:', newSort);
 
-        // 分页变化
         if (pagination.pageSize && pagination.pageSize !== pageSize) {
-            console.log('  📏 每页条数变化:', pagination.pageSize);
             setPageSize(pagination.pageSize);
             setCurrent(1);
-            console.log('  🔄 重置到第1页');
         } else if (pagination.current) {
-            console.log('  📄 页码变化:', pagination.current);
             setCurrent(pagination.current);
         }
-        console.log('📋 ====================================\n');
     }, [pageSize]);
 
     // ==================== 导出功能 ====================
@@ -834,25 +962,8 @@ const App: React.FC = () => {
 
             const exportColKeys = Array.from(visibleColumns).filter(key => key !== 'action');
             const exportCols = exportColKeys
-                .map(key => {
-                    if (key === 'index') return columnMap.index;
-                    if (key === 'DOC_NAME') return columnMap.DOC_NAME;
-                    if (key === 'DOC_NUMBER') return columnMap.DOC_NUMBER;
-                    if (key === 'DOC_CABINETANDGRID') return columnMap.DOC_CABINETANDGRID;
-                    if (key === 'DOC_NUM') return columnMap.DOC_NUM;
-                    if (key === 'DOC_FIB') return columnMap.DOC_FIB;
-                    if (key === 'DOC_TEM') return columnMap.DOC_TEM;
-                    if (key === 'DOC_PT') return columnMap.DOC_PT;
-                    if (key === 'DOC_PRIORITY') return columnMap.DOC_PRIORITY;
-                    if (key === 'DOC_SITE') return columnMap.DOC_SITE;
-                    if (key === 'DOC_NEWSITETIME') return columnMap.DOC_NEWSITETIME;
-                    if (key === 'FD_JIE_TIME') return columnMap.FD_JIE_TIME;
-                    if (key === 'DOC_PROJECT') return columnMap.DOC_PROJECT;
-                    if (key === 'FD_TARGET_NAME') return columnMap.FD_TARGET_NAME;
-                    if (key === 'DOC_DEPARTMENT') return columnMap.DOC_DEPARTMENT;
-                    return null;
-                })
-                .filter(col => col !== null);
+                .map(key => columnMap[key])
+                .filter(col => col !== undefined);
 
             const exportData = paginatedData.map((item, index) => {
                 const row: Record<string, any> = {};
@@ -897,15 +1008,15 @@ const App: React.FC = () => {
     // ==================== OrgSelector 处理 ====================
     const handleConfirm = useCallback((selected: SelectedItem[]) => {
         setSelectedItems(selected);
-        const names = selected.map(user => user.id);
-        handleFilterChange("DOC_JIE_ID", "in", names.length > 0 ? names : '');
+        const ids = selected.map(user => user.id);
+        handleFilterChange("DOC_JIE_ID", "in", ids.length > 0 ? ids : '');
         setVisible(false);
     }, [handleFilterChange]);
 
     const handleConfirms = useCallback((selected: SelectedItem[]) => {
         setSelectedItemss(selected);
-        const names = selected.map(user => user.id);
-        handleFilterChange("DOC_DEPARTMENT_ID", "eq", names.length > 0 ? names[0] : '');
+        const ids = selected.map(user => user.id);
+        handleFilterChange("DOC_DEPARTMENT_ID", "eq", ids.length > 0 ? ids[0] : '');
         setVisibles(false);
     }, [handleFilterChange]);
 
@@ -1231,15 +1342,64 @@ const App: React.FC = () => {
 
     // ==================== 初始化 ====================
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        const { fdType: fdTypeFromUrl, docSite: docSiteFromUrl } = getUrlParams();
+
+        if (fdTypeFromUrl) {
+            setFdType(fdTypeFromUrl);
+        }
+
+        // 初始化站点筛选
+        if (docSiteFromUrl && fdTypeFromUrl) {
+            const urlSiteValues = parseSiteValues(docSiteFromUrl);
+
+            const validSiteValues = processStatusOptions
+                .filter(item => item.key === fdTypeFromUrl)
+                .map(item => item.value);
+
+            const matchedValues = urlSiteValues.filter(v =>
+                validSiteValues.includes(String(v).trim())
+            );
+
+            console.log('🔍 初始化站点筛选:', {
+                docSiteFromUrl,
+                urlSiteValues,
+                matchedValues,
+                validSiteValues
+            });
+
+            if (matchedValues.length > 0) {
+                const normalizedValues = matchedValues.map(v => String(v).trim());
+
+                setFilters(prev => {
+                    const otherFilters = prev.filter(f => f.key !== 'DOC_SITE');
+                    return [...otherFilters, {
+                        key: 'DOC_SITE',
+                        value: normalizedValues,
+                        type: 'in'
+                    }];
+                });
+                setPrevSiteValues(normalizedValues);
+            } else {
+                console.warn('⚠️ URL中的站点值无效，无法匹配:', {
+                    docSiteFromUrl,
+                    urlSiteValues,
+                    validSiteValues
+                });
+                updateUrlParams({ doc_site: '' });
+            }
+        }
+
+        // 首次加载数据
+        fetchData(fdTypeFromUrl, docSiteFromUrl || null, true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // ==================== 初始化列显示 ====================
     useEffect(() => {
         if (fdType) {
             const baseColumns = new Set([
                 'index', 'DOC_NAME', 'DOC_NUMBER', 'DOC_NUM',
-                'DOC_PRIORITY', 'DOC_STATE', 'DOC_SITE', 'DOC_NEWSITETIME',
+                'DOC_PRIORITY', 'DOC_SITE', 'DOC_NEWSITETIME',
                 'FD_JIE_TIME', 'DOC_PROJECT', 'FD_TARGET_NAME', 'DOC_DEPARTMENT', 'action'
             ]);
 
@@ -1357,11 +1517,11 @@ const App: React.FC = () => {
                                 <label key={opt.value}>
                                     <input
                                         type="checkbox"
-                                        checked={priorityValues.includes(opt.value)}
+                                        checked={priorityValues.some(v => String(v) === String(opt.value))}
                                         onChange={(e) => {
                                             const newValues = e.target.checked
-                                                ? [...priorityValues, opt.value]
-                                                : priorityValues.filter(v => v !== opt.value);
+                                                ? [...priorityValues, String(opt.value)]
+                                                : priorityValues.filter(v => String(v) !== String(opt.value));
                                             handleFilterChange("DOC_PRIORITY", "in", newValues);
                                         }}
                                     />
@@ -1377,11 +1537,11 @@ const App: React.FC = () => {
                                 <label key={opt.value}>
                                     <input
                                         type="checkbox"
-                                        checked={docStatusValues.includes(opt.value)}
+                                        checked={docStatusValues.some(v => String(v) === String(opt.value))}
                                         onChange={(e) => {
                                             const newValues = e.target.checked
-                                                ? [...docStatusValues, opt.value]
-                                                : docStatusValues.filter(v => v !== opt.value);
+                                                ? [...docStatusValues, String(opt.value)]
+                                                : docStatusValues.filter(v => String(v) !== String(opt.value));
                                             handleFilterChange("FD_DOC_STATUS", "in", newValues);
                                         }}
                                     />
@@ -1398,11 +1558,11 @@ const App: React.FC = () => {
                                     <label key={opt.value}>
                                         <input
                                             type="checkbox"
-                                            checked={reworkValues.includes(opt.value)}
+                                            checked={reworkValues.some(v => String(v) === String(opt.value))}
                                             onChange={(e) => {
                                                 const newValues = e.target.checked
-                                                    ? [...reworkValues, opt.value]
-                                                    : reworkValues.filter(v => v !== opt.value);
+                                                    ? [...reworkValues, String(opt.value)]
+                                                    : reworkValues.filter(v => String(v) !== String(opt.value));
                                                 handleFilterChange("DOC_STATE", "in", newValues);
                                             }}
                                         />
@@ -1424,12 +1584,12 @@ const App: React.FC = () => {
                                     <label key={opt.value}>
                                         <input
                                             type="checkbox"
-                                            checked={values.includes(opt.value)}
+                                            checked={values.some(v => String(v) === String(opt.value))}
                                             onChange={(e) => {
                                                 const newValues = e.target.checked
-                                                    ? [...values, opt.value]
-                                                    : values.filter(v => v !== opt.value);
-                                                handleFilterChange("DOC_SITE", "in", newValues);
+                                                    ? [...values, String(opt.value)]
+                                                    : values.filter(v => String(v) !== String(opt.value));
+                                                handleSiteFilterChange(newValues);
                                             }}
                                         />
                                         {opt.label}
