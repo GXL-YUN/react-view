@@ -117,7 +117,7 @@ const App: React.FC = () => {
     const filtersHashRef = useRef<string>('');
     const isFetchingRef = useRef<boolean>(false);
     const initialLoadDoneRef = useRef<boolean>(false);
-    const prevNonSiteHashRef = useRef<string>(''); // ✅ 移到组件顶层
+    const prevNonSiteHashRef = useRef<string>('');
 
     // 派生状态：从 filters 中提取各个筛选条件的值
     const values = useMemo(() => {
@@ -202,7 +202,6 @@ const App: React.FC = () => {
         { label: '班组长审批', value: '5', key: "getTemAll" },
         { label: '待TEM拍摄', value: '15', key: "getTemAll" },
         { label: 'TEM拍摄', value: '6', key: "getTemAll" },
-        { label: '委外中', value: '66', key: "getTemAll" },
         { label: '二次质审', value: '7', key: "getTemAll" },
         { label: '交接审批', value: '16', key: "getTemAll" },
         { label: '待重新送样（返工）', value: '91', key: "getTemAll" },
@@ -216,7 +215,6 @@ const App: React.FC = () => {
         { label: '待拍摄', value: '11', key: "getSemAll" },
         { label: '拍摄', value: '3', key: "getSemAll" },
         { label: '班组长审批', value: '5', key: "getSemAll" },
-        { label: '委外中', value: '66', key: "getSemAll" },
         { label: '二次质审', value: '7', key: "getSemAll" },
         { label: '待重新送样（返工）', value: '91', key: "getSemAll" },
         { label: '接样人确认（返工）', value: '90', key: "getSemAll" },
@@ -227,7 +225,6 @@ const App: React.FC = () => {
         { label: '待数据处理', value: '9', key: "getVpdAll" },
         { label: '数据处理', value: '4', key: "getVpdAll" },
         { label: '技术负责人审核', value: '7', key: "getVpdAll" },
-        { label: '委外中', value: '66', key: "getVpdAll" },
         { label: '结案审批', value: '5', key: "getVpdAll" },
 
         { label: '接样中', value: '0', key: "getSimsAll" },
@@ -238,18 +235,17 @@ const App: React.FC = () => {
         { label: '待数据处理', value: '12', key: "getSimsAll" },
         { label: '数据处理', value: '4', key: "getSimsAll" },
         { label: '测试负责人', value: '5', key: "getSimsAll" },
-        { label: '委外中', value: '66', key: "getSimsAll" },
         { label: '二次质审', value: '7', key: "getSimsAll" },
 
         { label: '接样中', value: '0', key: "getXpsAll" },
+        { label: '待前处理', value: '10', key: "getXpsAll" },
+        { label: '前处理', value: '2', key: "getXpsAll" },
         { label: '待测试', value: '11', key: "getXpsAll" },
         { label: '测试', value: '3', key: "getXpsAll" },
         { label: '待数据处理', value: '12', key: "getXpsAll" },
         { label: '数据处理', value: '4', key: "getXpsAll" },
-        { label: '委外中', value: '66', key: "getXpsAll" },
         { label: '二次质审', value: '5', key: "getXpsAll" },
-        { label: '待前处理', value: '10', key: "getXpsAll" },
-        { label: '前处理', value: '2', key: "getXpsAll" },
+
     ];
 
     const getStatusListByFdType = useCallback((fdType: string): StatusItem[] => {
@@ -291,7 +287,7 @@ const App: React.FC = () => {
     const FD_DOC_STATUS = [
         { label: '待审', value: '20' },
         { label: '结束', value: '30' },
-        { label: '废弃', value: '00' },
+        // { label: '废弃', value: '00' },
     ];
 
     const getFdLableOptions = useCallback(() => {
@@ -329,13 +325,21 @@ const App: React.FC = () => {
             docSite = docSiteFromUrl || null;
         }
 
-        console.log('📡 fetchData 参数:', {
-            fdTypeParam,
-            docSiteParam,
-            finalDocSite: docSite,
-            forceRefresh,
-            requestFilters
-        });
+        // ⭐ 优化：当 docSite 为空时，清空数据并重置状态
+        if (docSite === '' || docSite === null) {
+            console.log('⏭️ doc_site 为空，清空数据');
+            setAllData([]);
+            setHasLoadedData(false);
+            // 更新请求哈希，避免后续重复请求
+            const requestHash = JSON.stringify({
+                fdType: currentFdType,
+                docSite: null,
+                filters: requestFilters
+            });
+            filtersHashRef.current = requestHash;
+            setNeedsRefreshOnActive(false);
+            return; // 直接返回，不调用接口
+        }
 
         // 生成请求唯一标识
         const requestHash = JSON.stringify({
@@ -459,6 +463,14 @@ const App: React.FC = () => {
 
         const { fdType: fdTypeFromUrl, docSite: docSiteFromUrl } = getUrlParams();
         if (!fdTypeFromUrl) return;
+
+        // ⭐ 优化：doc_site 为空时，清空数据
+        if (docSiteFromUrl === '' || docSiteFromUrl === null) {
+            console.log('⏭️ doc_site 为空，清空数据');
+            setAllData([]);
+            setHasLoadedData(false);
+            return;
+        }
 
         try {
             const requestFilters = filters.filter(f => f.key !== 'DOC_SITE');
@@ -612,7 +624,7 @@ const App: React.FC = () => {
                     console.log('👁️ 跳过刷新：页面不可见');
                 }
             }
-        }, 60 * 1000);
+        }, 10 * 60 * 1000);
 
         return () => {
             events.forEach(event => {
@@ -753,11 +765,8 @@ const App: React.FC = () => {
         // 4. 重置页码
         setCurrent(1);
 
-        // 5. 无论增加还是减少，都调用后端接口
+        // 5. ⭐ 统一由 fetchData 处理，无论有无值
         const docSite = normalizedValues.length > 0 ? normalizedValues.join(';') : null;
-        console.log('📡 站点筛选变化，调用后端接口:', { docSite, normalizedValues });
-
-        // 直接调用 fetchData，传入最新的站点值，强制刷新
         fetchData(undefined, docSite, true);
     }, [prevSiteValues, fetchData]);
 
@@ -798,21 +807,27 @@ const App: React.FC = () => {
         setPageSize(10);
         updateUrlParams({ doc_site: '' });
 
-        // 强制刷新数据
-        fetchData(undefined, null, true);
+        // ⭐ 重置时清空数据
+        setAllData([]);
+        setHasLoadedData(false);
+        // 重置请求哈希
+        filtersHashRef.current = '';
+
         message.info('已重置所有筛选条件');
-    }, [fetchData]);
+    }, []);
 
     // ==================== 手动刷新 ====================
     const handleRefresh = useCallback(() => {
-        const siteFilter = filters.find(f => f.key === 'DOC_SITE');
-        const docSite = siteFilter?.value?.length > 0
-            ? siteFilter.value.join(';')
-            : null;
+        const { fdType: fdTypeFromUrl, docSite: docSiteFromUrl } = getUrlParams();
 
-        fetchData(undefined, docSite, true);
-        message.info('已刷新数据');
-    }, [filters, fetchData]);
+        // ⭐ 统一由 fetchData 处理
+        if (fdTypeFromUrl) {
+            const docSite = docSiteFromUrl || null;
+            fetchData(fdTypeFromUrl, docSite, true);
+        } else {
+            message.warning('请先选择站点状态再刷新');
+        }
+    }, [fetchData]);
 
     // ==================== 移除单个筛选 ====================
     const removeFilter = useCallback((filterKey: string) => {
@@ -821,7 +836,7 @@ const App: React.FC = () => {
         if (filterKey === 'DOC_SITE') {
             updateUrlParams({ doc_site: '' });
             setPrevSiteValues([]);
-            // 移除站点筛选后调用后端
+            // ⭐ 移除站点筛选后，调用 fetchData 清空数据
             fetchData(undefined, null, true);
         } else {
             setFilters(prev => prev.filter(item => item.key !== filterKey));
@@ -1347,7 +1362,25 @@ const App: React.FC = () => {
         if (fdTypeFromUrl) {
             setFdType(fdTypeFromUrl);
         }
-
+        // ===== 新增：默认勾选"待审" =====
+        // 无论 URL 中是否有 fdType，只要 fdTypeFromUrl 存在，就设置默认的 FD_DOC_STATUS 筛选
+        if (fdTypeFromUrl) {
+            // 设置默认的 FD_DOC_STATUS 为 '20'（待审）
+            setFilters(prev => {
+                // 检查是否已经存在 FD_DOC_STATUS 筛选
+                const existingFilter = prev.find(f => f.key === 'FD_DOC_STATUS');
+                if (existingFilter) {
+                    // 如果已存在，不重复添加
+                    return prev;
+                }
+                // 添加默认的"待审"筛选
+                return [...prev, {
+                    key: 'FD_DOC_STATUS',
+                    value: ['20'],
+                    type: 'in'
+                }];
+            });
+        }
         // 初始化站点筛选
         if (docSiteFromUrl && fdTypeFromUrl) {
             const urlSiteValues = parseSiteValues(docSiteFromUrl);
@@ -1379,6 +1412,9 @@ const App: React.FC = () => {
                     }];
                 });
                 setPrevSiteValues(normalizedValues);
+
+                // ⭐ 有有效的站点值，加载数据
+                fetchData(fdTypeFromUrl, docSiteFromUrl, true);
             } else {
                 console.warn('⚠️ URL中的站点值无效，无法匹配:', {
                     docSiteFromUrl,
@@ -1386,13 +1422,66 @@ const App: React.FC = () => {
                     validSiteValues
                 });
                 updateUrlParams({ doc_site: '' });
+                // ⭐ 站点值无效，清空数据
+                setAllData([]);
+                setHasLoadedData(false);
             }
+        } else if (fdTypeFromUrl && (!docSiteFromUrl || docSiteFromUrl === '')) {
+            console.log('⏭️ 需要选择站点状态才能加载数据');
+            setAllData([]);
+            setHasLoadedData(false);
         }
-
-        // 首次加载数据
-        fetchData(fdTypeFromUrl, docSiteFromUrl || null, true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // ==================== 监听 URL 变化（浏览器前进/后退） ====================
+    useEffect(() => {
+        const handlePopState = () => {
+            const { fdType: fdTypeFromUrl, docSite: docSiteFromUrl } = getUrlParams();
+            console.log('🔙 URL 变化（popstate）:', { fdType: fdTypeFromUrl, docSite: docSiteFromUrl });
+
+            if (fdTypeFromUrl) {
+                setFdType(fdTypeFromUrl);
+                const docSite = docSiteFromUrl || null;
+
+                // ⭐ 更新站点筛选状态
+                if (docSite) {
+                    const siteValues = parseSiteValues(docSite);
+                    const validSiteValues = processStatusOptions
+                        .filter(item => item.key === fdTypeFromUrl)
+                        .map(item => item.value);
+                    const matchedValues = siteValues.filter(v => validSiteValues.includes(String(v).trim()));
+
+                    if (matchedValues.length > 0) {
+                        const normalizedValues = matchedValues.map(v => String(v).trim());
+                        setPrevSiteValues(normalizedValues);
+                        setFilters(prev => {
+                            const otherFilters = prev.filter(f => f.key !== 'DOC_SITE');
+                            return [...otherFilters, {
+                                key: 'DOC_SITE',
+                                value: normalizedValues,
+                                type: 'in'
+                            }];
+                        });
+                    } else {
+                        setPrevSiteValues([]);
+                        setFilters(prev => prev.filter(f => f.key !== 'DOC_SITE'));
+                    }
+                } else {
+                    setPrevSiteValues([]);
+                    setFilters(prev => prev.filter(f => f.key !== 'DOC_SITE'));
+                }
+
+                // ⭐ 统一由 fetchData 处理
+                fetchData(fdTypeFromUrl, docSite, true);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, [fetchData]);
 
     // ==================== 初始化列显示 ====================
     useEffect(() => {
@@ -1452,7 +1541,7 @@ const App: React.FC = () => {
                             )}
                         </span>
                         <span style={{ fontSize: '12px', color: '#999' }}>
-                            {isUserActive && isPageVisible ? '🔄 每1分钟自动刷新' :
+                            {isUserActive && isPageVisible ? '🔄 每10分钟自动刷新' :
                                 !isUserActive ? '⏸️ 恢复活动时刷新' : '👁️ 恢复页面时刷新'}
                         </span>
                         {autoRefreshCount > 0 && (
@@ -1468,6 +1557,11 @@ const App: React.FC = () => {
                         {!isPageVisible && (
                             <span style={{ fontSize: '11px', color: '#faad14' }}>
                                 👁️ 页面不可见
+                            </span>
+                        )}
+                        {!hasLoadedData && (
+                            <span style={{ fontSize: '11px', color: '#faad14' }}>
+                                ⚠️ 请选择站点状态
                             </span>
                         )}
                     </div>
