@@ -29,7 +29,7 @@ const App: React.FC = () => {
       {/* 统计表 */}
       {<AttendanceReportPage></AttendanceReportPage>}
 
-       {/* 排班表 */}
+       {/* 班组 */}
        {/*{<DailyShiftSchedule></DailyShiftSchedule>}*/}
     </div>
 
